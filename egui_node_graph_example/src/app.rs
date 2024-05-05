@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use eframe::egui::{self, DragValue, TextStyle};
+use eframe::egui::{self, DragValue, Label, TextStyle};
 use egui_node_graph::*;
 
 // ========= First, define your user data types =============
@@ -294,17 +294,17 @@ impl WidgetValueTrait for MyValueType {
         // inline parameter widgets.
         match self {
             MyValueType::Vec2 { value } => {
-                ui.label(param_name);
+                ui.add(Label::new(param_name).selectable(false));
                 ui.horizontal(|ui| {
-                    ui.label("x");
+                    ui.add(Label::new("x").selectable(false));
                     ui.add(DragValue::new(&mut value.x));
-                    ui.label("y");
+                    ui.add(Label::new("y").selectable(false));
                     ui.add(DragValue::new(&mut value.y));
                 });
             }
             MyValueType::Scalar { value } => {
                 ui.horizontal(|ui| {
-                    ui.label(param_name);
+                    ui.add(Label::new(param_name).selectable(false));
                     ui.add(DragValue::new(value));
                 });
             }

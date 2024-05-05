@@ -1,3 +1,5 @@
+use egui::Label;
+
 use super::*;
 
 /// This trait must be implemented by the `ValueType` generic parameter of the
@@ -43,7 +45,7 @@ pub trait WidgetValueTrait: Default {
         _user_state: &mut Self::UserState,
         _node_data: &Self::NodeData,
     ) -> Vec<Self::Response> {
-        ui.label(param_name);
+        ui.add(Label::new(param_name).selectable(false));
 
         Default::default()
     }
@@ -141,7 +143,7 @@ where
     where
         Self::Response: UserResponseTrait,
     {
-        ui.label(param_name);
+        ui.add(Label::new(param_name).selectable(false));
 
         Default::default()
     }

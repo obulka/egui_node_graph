@@ -550,11 +550,14 @@ where
 
         child_ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.add(Label::new(
-                    RichText::new(&self.graph[self.node_id].label)
-                        .text_style(TextStyle::Button)
-                        .color(text_color),
-                ));
+                ui.add(
+                    Label::new(
+                        RichText::new(&self.graph[self.node_id].label)
+                            .text_style(TextStyle::Button)
+                            .color(text_color),
+                    )
+                    .selectable(false),
+                );
                 responses.extend(
                     self.graph[self.node_id]
                         .user_data

@@ -153,7 +153,7 @@ where
             click_on_background = true;
         } else if r.drag_started() {
             drag_started_on_background = true;
-        } else if r.drag_released() {
+        } else if r.drag_stopped() {
             drag_released_on_background = true;
         }
 
@@ -181,7 +181,7 @@ where
         /* Draw the node finder, if open */
         let mut should_close_node_finder = false;
         if let Some(ref mut node_finder) = self.node_finder {
-            let mut node_finder_area = Area::new("node_finder").order(Order::Foreground);
+            let mut node_finder_area = Area::new("node_finder".into()).order(Order::Foreground);
             if let Some(pos) = node_finder.position {
                 node_finder_area = node_finder_area.current_pos(pos);
             }

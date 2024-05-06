@@ -112,6 +112,13 @@ where
         // and for a Panel it will fill it completely)
         let editor_rect = ui.max_rect();
         let cursor_in_editor = ui.rect_contains_pointer(editor_rect);
+        if cursor_in_editor {
+            let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
+            if scroll_delta != 0.0 {
+                let zoom_delta = (scroll_delta * 0.002).exp();
+                self.zoom(ui, zoom_delta);
+            }
+        }
 
         // Used to detect when the background was clicked
         let mut click_on_background = false;

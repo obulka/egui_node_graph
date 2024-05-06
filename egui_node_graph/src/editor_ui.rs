@@ -117,6 +117,7 @@ where
         // (so for windows it will use up to the resizeably set limit
         // and for a Panel it will fill it completely)
         let editor_rect = ui.max_rect();
+        ui.set_clip_rect(editor_rect);
 
         let cursor_pos = ui
             .ctx()

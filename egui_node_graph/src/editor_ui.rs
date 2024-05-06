@@ -593,7 +593,7 @@ fn draw_connection(
         color,
     };
 
-    let control_scale = ((dst_pos.x - src_pos.x) * pan_zoom.zoom / 2.0).max(30.0 * pan_zoom.zoom);
+    let control_scale = ((dst_pos.x - src_pos.x) / 2.0).max(30.0);
     let src_control = src_pos + Vec2::X * control_scale;
     let dst_control = dst_pos - Vec2::X * control_scale;
 

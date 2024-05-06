@@ -57,7 +57,8 @@ still considered breaking.
 **Egui node graph** is the library powering the graph user interface of
 [Blackjack](https://github.com/setzer22/blackjack), a 3d procedural modelling
 software built in Rust using egui, rend3 and wgpu.
-![Main interface of blackjack](https://raw.githubusercontent.com/setzer22/blackjack/main/doc/resources/showcase.png)
+[Main interface of blackjack](https://raw.githubusercontent.com/setzer22/blackjack/main/doc/resources/showcase.png).
+It is also used in [damascus](https://github.com/obulka/damascus) - a procedural modeling/ray marching/pathtracing tool.
 Are you using this crate for something cool? Add yourself to this section by sending a PR!
 
 ## Contributing 

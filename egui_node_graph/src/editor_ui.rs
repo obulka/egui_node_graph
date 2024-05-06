@@ -136,10 +136,6 @@ where
         // This locks the context, so don't hold on to it for too long.
         let mouse = &ui.ctx().input(|i| i.pointer.clone());
 
-        if mouse.any_released() && self.connection_in_progress.is_some() {
-            self.connection_in_progress = None;
-        }
-
         let cursor_pos = ui
             .ctx()
             .input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO));

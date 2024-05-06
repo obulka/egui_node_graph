@@ -105,6 +105,69 @@ where
     DataType: DataTypeTrait<UserState>,
     CategoryType: CategoryTrait,
 {
+    /// Call this from other panels to allow control of the nodegraph from them
+    pub fn graph_editor_interaction(&mut self, ui: &mut Ui) {
+        // This causes the graph editor to use as much free space as it can.
+        // (so for windows it will use up to the resizeably set limit
+        // and for a Panel it will fill it completely)
+        let editor_rect = ui.max_rect();
+        let cursor_in_editor = ui.rect_contains_pointer(editor_rect);
+
+        // Used to detect when the background was clicked
+        let mut click_on_background = false;
+
+        // Used to detect drag events in the background
+        let mut drag_started_on_background = false;
+        let mut drag_released_on_background = false;
+
+        // Allocate rect before the nodes, otherwise this will block the interaction
+        // with the nodes.
+        let r = ui.allocate_rect(ui.min_rect(), Sense::click().union(Sense::drag()));
+        if r.clicked() {
+            click_on_background = true;
+        } else if r.drag_started() {
+            drag_started_on_background = true;
+        } else if r.drag_stopped() {
+            drag_released_on_background = true;
+        }
+
+        /* Mouse input handling */
+
+        // This locks the context, so don't hold on to it for too long.
+        let mouse = &ui.ctx().input(|i| i.pointer.clone());
+
+        if mouse.any_released() && self.connection_in_progress.is_some() {
+            self.connection_in_progress = None;
+        }
+
+        let cursor_pos = ui
+            .ctx()
+            .input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO));
+        if mouse.secondary_released() && cursor_in_editor {
+            self.node_finder = Some(NodeFinder::new_at(cursor_pos));
+        }
+        if ui.ctx().input(|i| i.key_pressed(Key::Escape)) {
+            self.node_finder = None;
+        }
+
+        if r.dragged() && ui.ctx().input(|i| i.pointer.middle_down()) {
+            self.pan_zoom.pan += ui.ctx().input(|i| i.pointer.delta());
+        }
+
+        // Deselect and deactivate finder if the editor backround is clicked,
+        if click_on_background {
+            self.selected_nodes = Vec::new();
+            self.node_finder = None;
+        }
+
+        if drag_started_on_background && mouse.primary_down() {
+            self.ongoing_box_selection = Some(cursor_pos);
+        }
+        if mouse.primary_released() || drag_released_on_background {
+            self.ongoing_box_selection = None;
+        }
+    }
+
     #[must_use]
     pub fn draw_graph_editor(
         &mut self,
@@ -117,7 +180,6 @@ where
         // (so for windows it will use up to the resizeably set limit
         // and for a Panel it will fill it completely)
         let editor_rect = ui.max_rect();
-        // ui.set_clip_rect(editor_rect);
 
         let cursor_pos = ui
             .ctx()
@@ -420,8 +482,7 @@ where
         }
 
         // Deselect and deactivate finder if the editor backround is clicked,
-        // *or* if the the mouse clicks off the ui
-        if click_on_background || (mouse.any_click() && !cursor_in_editor) {
+        if click_on_background {
             self.selected_nodes = Vec::new();
             self.node_finder = None;
         }

@@ -149,7 +149,7 @@ where
 
         // Allocate rect before the nodes, otherwise this will block the interaction
         // with the nodes.
-        let r = ui.allocate_rect(ui.min_rect(), Sense::click().union(Sense::drag()));
+        let r = ui.allocate_rect(editor_rect, Sense::click().union(Sense::drag()));
         if r.clicked() {
             click_on_background = true;
         } else if r.drag_started() {

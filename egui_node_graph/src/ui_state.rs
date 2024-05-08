@@ -2,7 +2,7 @@ use super::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use egui::{Rect, Style, Ui, Vec2};
+use egui::{Style, Ui, Vec2};
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
 
@@ -63,22 +63,16 @@ impl<NodeData, DataType, ValueType, NodeKind, UserState> Default
     }
 }
 
-#[cfg(feature = "persistence")]
-fn _default_clip_rect() -> Rect {
-    Rect::NOTHING
-}
-
 #[derive(Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
 pub struct PanZoom {
     pub pan: Vec2,
     pub zoom: f32,
-    #[cfg_attr(feature = "persistence", serde(skip, default = "_default_clip_rect"))]
-    pub clip_rect: Rect,
     #[cfg_attr(feature = "persistence", serde(skip, default))]
     pub zoomed_style: Arc<Style>,
     #[cfg_attr(feature = "persistence", serde(skip, default))]
     pub started: bool,
+    pub enable_zoom_from_out_of_rect: bool,
 }
 
 impl Default for PanZoom {
@@ -86,9 +80,9 @@ impl Default for PanZoom {
         PanZoom {
             pan: Vec2::ZERO,
             zoom: 1.0,
-            clip_rect: Rect::NOTHING,
             zoomed_style: Default::default(),
             started: false,
+            enable_zoom_from_out_of_rect: false,
         }
     }
 }
@@ -99,14 +93,13 @@ impl PanZoom {
         PanZoom {
             pan: Vec2::ZERO,
             zoom,
-            clip_rect: Rect::NOTHING,
             zoomed_style: Arc::new(style.scaled(1.0)),
             started: false,
+            enable_zoom_from_out_of_rect: false,
         }
     }
 
-    pub fn zoom(&mut self, clip_rect: Rect, style: &Arc<Style>, zoom_delta: f32) {
-        self.clip_rect = clip_rect;
+    pub fn zoom(&mut self, style: &Arc<Style>, zoom_delta: f32) {
         let new_zoom = (self.zoom * zoom_delta).clamp(MIN_ZOOM, MAX_ZOOM);
         self.zoomed_style = Arc::new(style.scaled(new_zoom));
         self.zoom = new_zoom;

@@ -10,7 +10,7 @@ use egui::*;
 pub type PortLocations = std::collections::HashMap<AnyParameterId, Pos2>;
 pub type NodeRects = std::collections::HashMap<NodeId, Rect>;
 
-const DISTANCE_TO_CONNECT: f32 = 10.0;
+const DISTANCE_TO_CONNECT: f32 = 12.0;
 
 /// Nodes communicate certain events to the parent graph when drawn. There is
 /// one special `User` variant which can be used by users as the return value
@@ -107,19 +107,6 @@ where
 {
     /// Call this from other panels to allow control of the nodegraph from them
     pub fn graph_editor_interaction(&mut self, ui: &mut Ui) {
-        // This causes the graph editor to use as much free space as it can.
-        // (so for windows it will use up to the resizeably set limit
-        // and for a Panel it will fill it completely)
-        let editor_rect = ui.max_rect();
-        let cursor_in_editor = ui.rect_contains_pointer(editor_rect);
-        if cursor_in_editor {
-            let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
-            if scroll_delta != 0.0 {
-                let zoom_delta = (scroll_delta * 0.002).exp();
-                self.zoom(ui, zoom_delta);
-            }
-        }
-
         // Used to detect when the background was clicked
         let mut click_on_background = false;
 
@@ -146,7 +133,7 @@ where
         let cursor_pos = ui
             .ctx()
             .input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO));
-        if mouse.secondary_released() && cursor_in_editor {
+        if mouse.secondary_released() && ui.rect_contains_pointer(ui.max_rect()) {
             self.node_finder = Some(NodeFinder::new_at(cursor_pos));
         }
         if ui.ctx().input(|i| i.key_pressed(Key::Escape)) {
@@ -187,7 +174,7 @@ where
         }
 
         // Zoom only within area where graph is shown
-        if ui.rect_contains_pointer(editor_rect) {
+        if ui.rect_contains_pointer(editor_rect) || self.pan_zoom.enable_zoom_from_out_of_rect {
             let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
             if scroll_delta != 0.0 {
                 let zoom_delta = (scroll_delta * 0.002).exp();
@@ -213,23 +200,31 @@ where
     pub fn zoom(&mut self, ui: &Ui, zoom_delta: f32) {
         // Update zoom, and styles
         let zoom_before = self.pan_zoom.zoom;
-        self.pan_zoom.zoom(ui.max_rect(), ui.style(), zoom_delta);
+        self.pan_zoom.zoom(ui.style(), zoom_delta);
         if zoom_before != self.pan_zoom.zoom {
             let actual_delta = self.pan_zoom.zoom / zoom_before;
-            self.update_node_positions_after_zoom(actual_delta);
+            let editor_rect: Rect = ui.max_rect();
+            self.update_node_positions_after_zoom(
+                actual_delta,
+                ui.ctx().input(|i| {
+                    i.pointer
+                        .hover_pos()
+                        .unwrap_or(editor_rect.size().to_pos2() / 2.)
+                        - editor_rect.min
+                }),
+            );
         }
     }
 
-    fn update_node_positions_after_zoom(&mut self, zoom_delta: f32) {
-        // Update node positions, zoom towards center
-        let half_size = self.pan_zoom.clip_rect.size() / 2.0;
+    fn update_node_positions_after_zoom(&mut self, zoom_delta: f32, towards: Vec2) {
+        // Update node positions, zoom towards the specified screen position
         for (_id, node_pos) in self.node_positions.iter_mut() {
             // 1. Get node local position (relative to origo)
-            let local_pos = node_pos.to_vec2() - half_size + self.pan_zoom.pan;
+            let local_pos = *node_pos - towards + self.pan_zoom.pan;
             // 2. Scale local position by zoom delta
-            let scaled_local_pos = (local_pos * zoom_delta).to_pos2();
+            let scaled_local_pos = local_pos * zoom_delta;
             // 3. Transform back to global position
-            *node_pos = scaled_local_pos + half_size - self.pan_zoom.pan;
+            *node_pos = scaled_local_pos + towards - self.pan_zoom.pan;
             // This way we can retain pan untouched when zooming :)
         }
     }
@@ -359,6 +354,7 @@ where
                 Key: slotmap::Key + Into<AnyParameterId>,
                 Value,
             >(
+                pan_zoom: &PanZoom,
                 graph: &Graph<NodeData, DataType, ValueType>,
                 port_type: &DataType,
                 ports: &SlotMap<Key, Value>,
@@ -375,7 +371,9 @@ where
 
                         if compatible_ports {
                             port_locations.get(&port_id.into()).and_then(|port_pos| {
-                                if port_pos.distance(cursor_pos) < DISTANCE_TO_CONNECT {
+                                if port_pos.distance(cursor_pos)
+                                    < DISTANCE_TO_CONNECT * pan_zoom.zoom
+                                {
                                     Some(*port_pos)
                                 } else {
                                     None
@@ -392,6 +390,7 @@ where
                 AnyParameterId::Output(_) => (
                     start_pos,
                     snap_to_ports(
+                        &self.pan_zoom,
                         &self.graph,
                         port_type,
                         &self.graph.inputs,
@@ -401,6 +400,7 @@ where
                 ),
                 AnyParameterId::Input(_) => (
                     snap_to_ports(
+                        &self.pan_zoom,
                         &self.graph,
                         port_type,
                         &self.graph.outputs,
@@ -837,8 +837,10 @@ where
         {
             let port_type = graph.any_param_type(param_id).unwrap();
 
-            let port_rect =
-                Rect::from_center_size(port_pos, egui::vec2(10.0, 10.0) * pan_zoom.zoom);
+            let port_rect = Rect::from_center_size(
+                port_pos,
+                egui::Vec2::splat(2. * DISTANCE_TO_CONNECT) * pan_zoom.zoom,
+            );
 
             let sense = if ongoing_drag.is_some() {
                 Sense::hover()

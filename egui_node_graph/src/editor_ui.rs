@@ -454,7 +454,10 @@ where
                     //Convenience NodeResponse for users
                 }
                 NodeResponse::SelectNode(node_id) => {
-                    self.selected_nodes = Vec::from([*node_id]);
+                    if !ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT)) {
+                        self.selected_nodes.clear();
+                    }
+                    self.selected_nodes.push(*node_id);
                 }
                 NodeResponse::DeleteNodeUi(node_id) => {
                     let (node, disc_events) = self.graph.remove_node(*node_id);

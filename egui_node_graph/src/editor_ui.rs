@@ -146,7 +146,9 @@ where
 
         // Deselect and deactivate finder if the editor backround is clicked,
         if click_on_background {
-            self.selected_nodes = Vec::new();
+            if !ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT)) {
+                self.selected_nodes.clear();
+            }
             self.node_finder = None;
         }
 
@@ -442,6 +444,7 @@ where
         // are stored here to report them back to the user.
         let mut extra_responses: Vec<NodeResponse<UserResponse, NodeData>> = Vec::new();
 
+        let shift_pressed: bool = ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
         for response in delayed_responses.iter() {
             match response {
                 NodeResponse::ConnectEventStarted(node_id, port) => {
@@ -454,10 +457,10 @@ where
                     //Convenience NodeResponse for users
                 }
                 NodeResponse::SelectNode(node_id) => {
-                    if !ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT)) {
+                    if !shift_pressed {
                         self.selected_nodes.clear();
                     }
-                    self.selected_nodes.push(*node_id);
+                    self.selected_nodes.insert(*node_id);
                 }
                 NodeResponse::DeleteNodeUi(node_id) => {
                     let (node, disc_events) = self.graph.remove_node(*node_id);
@@ -525,8 +528,11 @@ where
                 bg_color,
                 Stroke::new(3.0, stroke_color),
             );
+            if !shift_pressed {
+                self.selected_nodes.clear();
+            }
 
-            self.selected_nodes = node_rects
+            self.selected_nodes.extend(node_rects
                 .into_iter()
                 .filter_map(|(node_id, rect)| {
                     if selection_rect.intersects(rect) {
@@ -535,7 +541,7 @@ where
                         None
                     }
                 })
-                .collect();
+                .collect::<HashSet<NodeId>>());
         }
 
         // Push any responses that were generated during response handling.
@@ -565,7 +571,9 @@ where
 
         // Deselect and deactivate finder if the editor backround is clicked,
         if click_on_background {
-            self.selected_nodes = Vec::new();
+            if !shift_pressed {
+                self.selected_nodes.clear();
+            }
             self.node_finder = None;
         }
 

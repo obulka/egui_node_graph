@@ -1,10 +1,12 @@
-use super::*;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
 use egui::{Style, Ui, Vec2};
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
+
+use super::*;
 
 use crate::scale::Scale;
 
@@ -23,7 +25,7 @@ pub struct GraphEditorState<NodeData, DataType, ValueType, NodeTemplate, UserSta
     pub connection_in_progress: Option<(NodeId, AnyParameterId)>,
     /// The currently selected node. Some interface actions depend on the
     /// currently selected node.
-    pub selected_nodes: Vec<NodeId>,
+    pub selected_nodes: HashSet<NodeId>,
     /// The mouse drag start position for an ongoing box selection.
     pub ongoing_box_selection: Option<egui::Pos2>,
     /// The position of each node.

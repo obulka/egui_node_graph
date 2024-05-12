@@ -29,9 +29,14 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
     pub fn duplicate_node(&mut self, node_id: NodeId) -> Option<NodeId> {
         if let Some(node_to_duplicate) = self.nodes.get(node_id) {
             let mut duplicate_node: Node<NodeData> = (*node_to_duplicate).clone();
-            duplicate_node.inputs.clear();
-            duplicate_node.outputs.clear();
-            let new_node_id: NodeId = self.nodes.insert(duplicate_node);
+            // let mut duplicate_inputs: InputParam = (*duplicate_node.inputs).clone();
+            // for input in duplicate_inputs.iter_mut() {
+            //     input.id =
+            // }
+            let new_node_id: NodeId = self.nodes.insert_with_key(|node_id| {
+                duplicate_node.id = node_id;
+                duplicate_node
+            });
             return Some(new_node_id);
         }
         None
@@ -44,6 +49,7 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
                 new_node_ids.insert(new_node_id);
             }
         }
+
         new_node_ids
     }
 

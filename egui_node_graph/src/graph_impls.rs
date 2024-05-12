@@ -49,6 +49,19 @@ impl<
             }
             duplicate_node.inputs = duplicated_inputs;
 
+            let mut duplicated_outputs = Vec::<(String, OutputId)>::new();
+            for (label, output_id) in duplicate_node.outputs.iter() {
+                if let Some(output) = self.outputs.get(*output_id) {
+                    let mut duplicated_output = (*output).clone();
+                    let duplicate_id = self.outputs.insert_with_key(|duplicate_id| {
+                        duplicated_output.id = duplicate_id;
+                        duplicated_output
+                    });
+                    duplicated_outputs.push((label.clone(), duplicate_id))
+                }
+            }
+            duplicate_node.outputs = duplicated_outputs;
+
             let new_node_id: NodeId = self.nodes.insert_with_key(|node_id| {
                 duplicate_node.id = node_id;
                 duplicate_node

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// user wants to store per-node.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct Node<NodeData> {
+pub struct Node<NodeData: NodeDataTrait> {
     pub id: NodeId,
     pub label: String,
     pub inputs: Vec<(String, InputId)>,
@@ -78,7 +78,7 @@ pub struct OutputParam<DataType> {
 /// crate to represent all the inner references in the data.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct Graph<NodeData, DataType, ValueType> {
+pub struct Graph<NodeData: NodeDataTrait, DataType, ValueType> {
     /// The [`Node`]s of the graph
     pub nodes: SlotMap<NodeId, Node<NodeData>>,
     /// The [`InputParam`]s of the graph

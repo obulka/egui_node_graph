@@ -93,7 +93,7 @@ pub trait DataTypeTrait<UserState>: PartialEq + Eq {
 /// [`Graph`]. This trait allows customizing some aspects of the node drawing.
 pub trait NodeDataTrait
 where
-    Self: Sized,
+    Self: Clone + Sized,
 {
     /// Must be set to the custom user `NodeResponse` type
     type Response;
@@ -234,7 +234,7 @@ impl CategoryTrait for String {
 /// graph, what is their name, and what are their input / output parameters.
 pub trait NodeTemplateTrait: Clone {
     /// Must be set to the custom user `NodeData` type
-    type NodeData;
+    type NodeData: NodeDataTrait;
     /// Must be set to the custom user `DataType` type
     type DataType;
     /// Must be set to the custom user `ValueType` type

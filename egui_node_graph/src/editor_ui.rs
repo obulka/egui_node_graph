@@ -22,6 +22,7 @@ pub enum NodeResponse<UserResponse: UserResponseTrait, NodeData: NodeDataTrait> 
         output: OutputId,
         input: InputId,
     },
+    // CopyNodes,
     CreatedNode(NodeId),
     SelectNode(NodeId),
     /// As a user of this library, prefer listening for `DeleteNodeFull` which
@@ -38,6 +39,7 @@ pub enum NodeResponse<UserResponse: UserResponseTrait, NodeData: NodeDataTrait> 
         output: OutputId,
         input: InputId,
     },
+    // PasteNodes,
     /// Emitted when a node is interacted with, and should be raised
     RaiseNode(NodeId),
     MoveNode {
@@ -72,7 +74,7 @@ impl<UserResponse: UserResponseTrait, NodeData: NodeDataTrait> Default
         }
     }
 }
-pub struct GraphNodeWidget<'a, NodeData, DataType, ValueType> {
+pub struct GraphNodeWidget<'a, NodeData: NodeDataTrait, DataType, ValueType> {
     pub position: &'a mut Pos2,
     pub graph: &'a mut Graph<NodeData, DataType, ValueType>,
     pub port_locations: &'a mut PortLocations,
@@ -146,7 +148,10 @@ where
 
         // Deselect and deactivate finder if the editor backround is clicked,
         if click_on_background {
-            if !ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT)) {
+            if !ui
+                .ctx()
+                .input(|i| i.modifiers.matches_logically(Modifiers::SHIFT))
+            {
                 self.selected_nodes.clear();
             }
             self.node_finder = None;
@@ -238,6 +243,13 @@ where
         user_state: &mut UserState,
         prepend_responses: Vec<NodeResponse<UserResponse, NodeData>>,
     ) -> GraphResponse<UserResponse, NodeData> {
+        debug_assert_eq!(
+            self.node_order.iter().copied().collect::<HashSet<_>>(),
+            self.graph.iter_nodes().collect::<HashSet<_>>(),
+            "The node_order field of the GraphEditorself was left in an \
+        inconsistent self. It has either more or less values than the graph."
+        );
+
         // This causes the graph editor to use as much free space as it can.
         // (so for windows it will use up to the resizeably set limit
         // and for a Panel it will fill it completely)
@@ -264,12 +276,7 @@ where
         let mut drag_started_on_background = false;
         let mut drag_released_on_background = false;
 
-        debug_assert_eq!(
-            self.node_order.iter().copied().collect::<HashSet<_>>(),
-            self.graph.iter_nodes().collect::<HashSet<_>>(),
-            "The node_order field of the GraphEditorself was left in an \
-        inconsistent self. It has either more or less values than the graph."
-        );
+        let mut should_close_node_finder = false;
 
         // Allocate rect before the nodes, otherwise this will block the interaction
         // with the nodes.
@@ -280,6 +287,35 @@ where
             drag_started_on_background = true;
         } else if r.drag_stopped() {
             drag_released_on_background = true;
+        }
+
+        let shift_pressed: bool = ui
+            .ctx()
+            .input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
+
+        if ui.ctx().input(|i| {
+            i.events
+                .iter()
+                .any(|event| matches!(event, egui::Event::Copy))
+        }) {
+            self.copied_nodes = self.selected_nodes.clone();
+        } else if ui.ctx().input(|i| {
+            i.events
+                .iter()
+                .any(|event| matches!(event, egui::Event::Paste(_)))
+        }) {
+            let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
+
+            for new_node in pasted_nodes.iter() {
+                self.node_positions.insert(
+                    *new_node,
+                    cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2(),
+                );
+                self.node_order.push(*new_node);
+                delayed_responses.push(NodeResponse::CreatedNode(*new_node));
+            }
+
+            should_close_node_finder = true;
         }
 
         /* Draw nodes */
@@ -304,7 +340,6 @@ where
         }
 
         /* Draw the node finder, if open */
-        let mut should_close_node_finder = false;
         if let Some(ref mut node_finder) = self.node_finder {
             let mut node_finder_area = Area::new(Id::new("node_finder")).order(Order::Foreground);
             if let Some(pos) = node_finder.position {
@@ -315,8 +350,8 @@ where
                     let new_node = self.graph.add_node(
                         node_kind.node_graph_label(user_state),
                         node_kind.user_data(user_state),
-                        |graph, node_id| node_kind.build_node(graph, user_state, node_id),
                     );
+                    node_kind.build_node(&mut self.graph, user_state, new_node);
                     self.node_positions.insert(
                         new_node,
                         node_finder.position.unwrap_or(cursor_pos)
@@ -325,8 +360,9 @@ where
                     );
                     self.node_order.push(new_node);
 
-                    should_close_node_finder = true;
                     delayed_responses.push(NodeResponse::CreatedNode(new_node));
+
+                    should_close_node_finder = true;
                 }
                 let finder_rect = ui.min_rect();
                 // If the cursor is not in the main editor, check if the cursor is in the finder
@@ -349,7 +385,7 @@ where
 
             // Find a port to connect to
             fn snap_to_ports<
-                NodeData,
+                NodeData: NodeDataTrait,
                 UserState,
                 DataType: DataTypeTrait<UserState>,
                 ValueType,
@@ -444,7 +480,6 @@ where
         // are stored here to report them back to the user.
         let mut extra_responses: Vec<NodeResponse<UserResponse, NodeData>> = Vec::new();
 
-        let shift_pressed: bool = ui.ctx().input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
         for response in delayed_responses.iter() {
             match response {
                 NodeResponse::ConnectEventStarted(node_id, port) => {
@@ -532,16 +567,18 @@ where
                 self.selected_nodes.clear();
             }
 
-            self.selected_nodes.extend(node_rects
-                .into_iter()
-                .filter_map(|(node_id, rect)| {
-                    if selection_rect.intersects(rect) {
-                        Some(node_id)
-                    } else {
-                        None
-                    }
-                })
-                .collect::<HashSet<NodeId>>());
+            self.selected_nodes.extend(
+                node_rects
+                    .into_iter()
+                    .filter_map(|(node_id, rect)| {
+                        if selection_rect.intersects(rect) {
+                            Some(node_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<HashSet<NodeId>>(),
+            );
         }
 
         // Push any responses that were generated during response handling.

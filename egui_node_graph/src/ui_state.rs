@@ -15,7 +15,7 @@ const MAX_ZOOM: f32 = 2.0;
 
 #[derive(Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct GraphEditorState<NodeData, DataType, ValueType, NodeTemplate, UserState> {
+pub struct GraphEditorState<NodeData: NodeDataTrait, DataType, ValueType, NodeTemplate, UserState> {
     pub graph: Graph<NodeData, DataType, ValueType>,
     /// Nodes are drawn in this order. Draw order is important because nodes
     /// that are drawn last are on top.
@@ -26,6 +26,8 @@ pub struct GraphEditorState<NodeData, DataType, ValueType, NodeTemplate, UserSta
     /// The currently selected node. Some interface actions depend on the
     /// currently selected node.
     pub selected_nodes: HashSet<NodeId>,
+    /// THe nodes that have been copied
+    pub copied_nodes: HashSet<NodeId>,
     /// The mouse drag start position for an ongoing box selection.
     pub ongoing_box_selection: Option<egui::Pos2>,
     /// The position of each node.
@@ -37,7 +39,7 @@ pub struct GraphEditorState<NodeData, DataType, ValueType, NodeTemplate, UserSta
     pub _user_state: PhantomData<fn() -> UserState>,
 }
 
-impl<NodeData, DataType, ValueType, NodeKind, UserState>
+impl<NodeData: NodeDataTrait, DataType, ValueType, NodeKind, UserState>
     GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
     pub fn new(default_zoom: f32) -> Self {
@@ -47,7 +49,7 @@ impl<NodeData, DataType, ValueType, NodeKind, UserState>
         }
     }
 }
-impl<NodeData, DataType, ValueType, NodeKind, UserState> Default
+impl<NodeData: NodeDataTrait, DataType, ValueType, NodeKind, UserState> Default
     for GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
     fn default() -> Self {
@@ -56,6 +58,7 @@ impl<NodeData, DataType, ValueType, NodeKind, UserState> Default
             node_order: Default::default(),
             connection_in_progress: Default::default(),
             selected_nodes: Default::default(),
+            copied_nodes: Default::default(),
             ongoing_box_selection: Default::default(),
             node_positions: Default::default(),
             node_finder: Default::default(),

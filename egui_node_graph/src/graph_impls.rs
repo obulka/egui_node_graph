@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use super::*;
 
-impl<NodeData, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
+impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
     pub fn new() -> Self {
         Self {
             nodes: SlotMap::default(),
@@ -10,13 +12,8 @@ impl<NodeData, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
         }
     }
 
-    pub fn add_node(
-        &mut self,
-        label: String,
-        user_data: NodeData,
-        f: impl FnOnce(&mut Graph<NodeData, DataType, ValueType>, NodeId),
-    ) -> NodeId {
-        let node_id = self.nodes.insert_with_key(|node_id| {
+    pub fn add_node(&mut self, label: String, user_data: NodeData) -> NodeId {
+        self.nodes.insert_with_key(|node_id| {
             Node {
                 id: node_id,
                 label,
@@ -25,11 +22,29 @@ impl<NodeData, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
                 outputs: Vec::default(),
                 user_data,
             }
-        });
+        })
+    }
 
-        f(self, node_id);
+    /// Duplicate a node and return the new node's id
+    pub fn duplicate_node(&mut self, node_id: NodeId) -> Option<NodeId> {
+        if let Some(node_to_duplicate) = self.nodes.get(node_id) {
+            let mut duplicate_node: Node<NodeData> = (*node_to_duplicate).clone();
+            duplicate_node.inputs.clear();
+            duplicate_node.outputs.clear();
+            let new_node_id: NodeId = self.nodes.insert(duplicate_node);
+            return Some(new_node_id);
+        }
+        None
+    }
 
-        node_id
+    pub fn duplicate_nodes(&mut self, node_ids: &HashSet<NodeId>) -> HashSet<NodeId> {
+        let mut new_node_ids = HashSet::<NodeId>::new();
+        for node_id in node_ids.iter() {
+            if let Some(new_node_id) = self.duplicate_node(*node_id) {
+                new_node_ids.insert(new_node_id);
+            }
+        }
+        new_node_ids
     }
 
     pub fn add_input_param(
@@ -154,13 +169,15 @@ impl<NodeData, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
     }
 }
 
-impl<NodeData, DataType, ValueType> Default for Graph<NodeData, DataType, ValueType> {
+impl<NodeData: NodeDataTrait, DataType, ValueType> Default
+    for Graph<NodeData, DataType, ValueType>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<NodeData> Node<NodeData> {
+impl<NodeData: NodeDataTrait> Node<NodeData> {
     pub fn inputs<'a, DataType, DataValue>(
         &'a self,
         graph: &'a Graph<NodeData, DataType, DataValue>,

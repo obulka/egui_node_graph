@@ -8,6 +8,7 @@ use egui_node_graph::*;
 /// The NodeData holds a custom data struct inside each node. It's useful to
 /// store additional information that doesn't live in parameters. For this
 /// example, the node data stores the template (i.e. the "type") of the node.
+#[derive(Clone)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub struct MyNodeData {
     template: MyNodeTemplate,

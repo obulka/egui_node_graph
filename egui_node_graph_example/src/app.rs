@@ -17,7 +17,7 @@ pub struct MyNodeData {
 /// `DataType`s are what defines the possible range of connections when
 /// attaching two ports together. The graph UI will make sure to not allow
 /// attaching incompatible datatypes.
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub enum MyDataType {
     Scalar,
@@ -94,7 +94,7 @@ pub enum MyResponse {
 /// The graph 'global' state. This state struct is passed around to the node and
 /// parameter drawing callbacks. The contents of this struct are entirely up to
 /// the user. For this example, we use it to keep track of the 'active' node.
-#[derive(Default)]
+#[derive(Clone, Default)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub struct MyGraphState {
     pub active_node: Option<NodeId>,
@@ -165,7 +165,7 @@ impl NodeTemplateTrait for MyNodeTemplate {
 
     fn build_node(
         &self,
-        graph: &mut Graph<Self::NodeData, Self::DataType, Self::ValueType>,
+        graph: &mut Graph<Self::NodeData, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
         node_id: NodeId,
     ) {
@@ -331,9 +331,9 @@ impl NodeDataTrait for MyNodeData {
         &self,
         ui: &mut egui::Ui,
         node_id: NodeId,
-        _graph: &Graph<MyNodeData, MyDataType, MyValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         user_state: &mut Self::UserState,
-    ) -> Vec<NodeResponse<MyResponse, MyNodeData>>
+    ) -> Vec<NodeResponse<Self::Response, Self>>
     where
         MyResponse: UserResponseTrait,
     {
@@ -369,7 +369,7 @@ impl NodeDataTrait for MyNodeData {
     }
 }
 
-type MyGraph = Graph<MyNodeData, MyDataType, MyValueType>;
+type MyGraph = Graph<MyNodeData, MyDataType, MyValueType, MyGraphState>;
 type MyEditorState =
     GraphEditorState<MyNodeData, MyDataType, MyValueType, MyNodeTemplate, MyGraphState>;
 

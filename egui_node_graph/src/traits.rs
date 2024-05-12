@@ -11,10 +11,10 @@ use super::*;
 /// `node_data` parameter during `value_widget`. The default value is never
 /// used, so the implementation is not important, but it should be reasonably
 /// cheap to construct.
-pub trait WidgetValueTrait: Default {
+pub trait WidgetValueTrait: Default + Clone {
     type Response;
-    type UserState;
-    type NodeData;
+    type UserState: Clone;
+    type NodeData: NodeDataTrait;
 
     /// This method will be called for each input parameter with a widget with an disconnected
     /// input only. To display UI for connected inputs use [`WidgetValueTrait::value_widget_connected`].
@@ -54,7 +54,7 @@ pub trait WidgetValueTrait: Default {
 /// This trait must be implemented by the `DataType` generic parameter of the
 /// [`Graph`]. This trait tells the library how to visually expose data types
 /// to the user.
-pub trait DataTypeTrait<UserState>: PartialEq + Eq {
+pub trait DataTypeTrait<UserState>: PartialEq + Eq + Clone {
     /// The associated port color of this datatype
     fn data_type_color(&self, user_state: &mut UserState) -> egui::Color32;
 
@@ -98,18 +98,18 @@ where
     /// Must be set to the custom user `NodeResponse` type
     type Response;
     /// Must be set to the custom user `UserState` type
-    type UserState;
+    type UserState: Clone;
     /// Must be set to the custom user `DataType` type
-    type DataType;
+    type DataType: DataTypeTrait<Self::UserState>;
     /// Must be set to the custom user `ValueType` type
-    type ValueType;
+    type ValueType: WidgetValueTrait;
 
     /// Additional UI elements to draw in the nodes, after the parameters.
     fn bottom_ui(
         &self,
         ui: &mut egui::Ui,
         node_id: NodeId,
-        graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         user_state: &mut Self::UserState,
     ) -> Vec<NodeResponse<Self::Response, Self>>
     where
@@ -120,7 +120,7 @@ where
         &self,
         _ui: &mut egui::Ui,
         _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
     ) -> Vec<NodeResponse<Self::Response, Self>>
     where
@@ -136,7 +136,7 @@ where
         &self,
         ui: &mut egui::Ui,
         _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
         param_name: &str,
     ) -> Vec<NodeResponse<Self::Response, Self>>
@@ -154,7 +154,7 @@ where
         &self,
         _ui: &egui::Ui,
         _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
     ) -> Option<egui::Color32> {
         None
@@ -173,7 +173,7 @@ where
         _ui: &mut egui::Ui,
         _node_id: NodeId,
         _param_id: AnyParameterId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
     ) {
     }
@@ -181,7 +181,7 @@ where
     fn can_delete(
         &self,
         _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
     ) -> bool {
         true
@@ -236,11 +236,11 @@ pub trait NodeTemplateTrait: Clone {
     /// Must be set to the custom user `NodeData` type
     type NodeData: NodeDataTrait;
     /// Must be set to the custom user `DataType` type
-    type DataType;
+    type DataType: DataTypeTrait<Self::UserState>;
     /// Must be set to the custom user `ValueType` type
-    type ValueType;
+    type ValueType: WidgetValueTrait;
     /// Must be set to the custom user `UserState` type
-    type UserState;
+    type UserState: Clone;
     /// Must be a type that implements the [`CategoryTrait`] trait.
     ///
     /// `&'static str` is a good default if you intend to simply type out
@@ -275,7 +275,7 @@ pub trait NodeTemplateTrait: Clone {
     /// parameters.
     fn build_node(
         &self,
-        graph: &mut Graph<Self::NodeData, Self::DataType, Self::ValueType>,
+        graph: &mut Graph<Self::NodeData, Self::DataType, Self::ValueType, Self::UserState>,
         user_state: &mut Self::UserState,
         node_id: NodeId,
     );

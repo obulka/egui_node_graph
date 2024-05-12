@@ -2,7 +2,13 @@ use std::collections::HashSet;
 
 use super::*;
 
-impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, ValueType> {
+impl<
+        NodeData: NodeDataTrait,
+        DataType: DataTypeTrait<UserState>,
+        ValueType: WidgetValueTrait,
+        UserState: Clone,
+    > Graph<NodeData, DataType, ValueType, UserState>
+{
     pub fn new() -> Self {
         Self {
             nodes: SlotMap::default(),
@@ -29,10 +35,20 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
     pub fn duplicate_node(&mut self, node_id: NodeId) -> Option<NodeId> {
         if let Some(node_to_duplicate) = self.nodes.get(node_id) {
             let mut duplicate_node: Node<NodeData> = (*node_to_duplicate).clone();
-            // let mut duplicate_inputs: InputParam = (*duplicate_node.inputs).clone();
-            // for input in duplicate_inputs.iter_mut() {
-            //     input.id =
-            // }
+
+            let mut duplicated_inputs = Vec::<(String, InputId)>::new();
+            for (label, input_id) in duplicate_node.inputs.iter() {
+                if let Some(input) = self.inputs.get(*input_id) {
+                    let mut duplicated_input = (*input).clone();
+                    let duplicate_id = self.inputs.insert_with_key(|duplicate_id| {
+                        duplicated_input.id = duplicate_id;
+                        duplicated_input
+                    });
+                    duplicated_inputs.push((label.clone(), duplicate_id))
+                }
+            }
+            duplicate_node.inputs = duplicated_inputs;
+
             let new_node_id: NodeId = self.nodes.insert_with_key(|node_id| {
                 duplicate_node.id = node_id;
                 duplicate_node
@@ -62,13 +78,8 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
         kind: InputParamKind,
         shown_inline: bool,
     ) -> InputId {
-        let input_id = self.inputs.insert_with_key(|input_id| InputParam {
-            id: input_id,
-            typ,
-            value,
-            kind,
-            node: node_id,
-            shown_inline,
+        let input_id = self.inputs.insert_with_key(|input_id| {
+            InputParam::new(input_id, typ, value, kind, node_id, shown_inline)
         });
         self.nodes[node_id].inputs.push((name, input_id));
         input_id
@@ -89,11 +100,9 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
     }
 
     pub fn add_output_param(&mut self, node_id: NodeId, name: String, typ: DataType) -> OutputId {
-        let output_id = self.outputs.insert_with_key(|output_id| OutputParam {
-            id: output_id,
-            node: node_id,
-            typ,
-        });
+        let output_id = self
+            .outputs
+            .insert_with_key(|output_id| OutputParam::new(output_id, typ, node_id));
         self.nodes[node_id].outputs.push((name, output_id));
         output_id
     }
@@ -158,25 +167,32 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Graph<NodeData, DataType, Val
         .ok_or(EguiGraphError::InvalidParameterId(param))
     }
 
-    pub fn try_get_input(&self, input: InputId) -> Option<&InputParam<DataType, ValueType>> {
+    pub fn try_get_input(
+        &self,
+        input: InputId,
+    ) -> Option<&InputParam<DataType, ValueType, UserState>> {
         self.inputs.get(input)
     }
 
-    pub fn get_input(&self, input: InputId) -> &InputParam<DataType, ValueType> {
+    pub fn get_input(&self, input: InputId) -> &InputParam<DataType, ValueType, UserState> {
         &self.inputs[input]
     }
 
-    pub fn try_get_output(&self, output: OutputId) -> Option<&OutputParam<DataType>> {
+    pub fn try_get_output(&self, output: OutputId) -> Option<&OutputParam<DataType, UserState>> {
         self.outputs.get(output)
     }
 
-    pub fn get_output(&self, output: OutputId) -> &OutputParam<DataType> {
+    pub fn get_output(&self, output: OutputId) -> &OutputParam<DataType, UserState> {
         &self.outputs[output]
     }
 }
 
-impl<NodeData: NodeDataTrait, DataType, ValueType> Default
-    for Graph<NodeData, DataType, ValueType>
+impl<
+        NodeData: NodeDataTrait,
+        DataType: DataTypeTrait<UserState>,
+        ValueType: WidgetValueTrait,
+        UserState: Clone,
+    > Default for Graph<NodeData, DataType, ValueType, UserState>
 {
     fn default() -> Self {
         Self::new()
@@ -184,17 +200,27 @@ impl<NodeData: NodeDataTrait, DataType, ValueType> Default
 }
 
 impl<NodeData: NodeDataTrait> Node<NodeData> {
-    pub fn inputs<'a, DataType, DataValue>(
+    pub fn inputs<
+        'a,
+        DataType: DataTypeTrait<UserState>,
+        DataValue: WidgetValueTrait,
+        UserState: Clone,
+    >(
         &'a self,
-        graph: &'a Graph<NodeData, DataType, DataValue>,
-    ) -> impl Iterator<Item = &InputParam<DataType, DataValue>> + 'a {
+        graph: &'a Graph<NodeData, DataType, DataValue, UserState>,
+    ) -> impl Iterator<Item = &InputParam<DataType, DataValue, UserState>> + 'a {
         self.input_ids().map(|id| graph.get_input(id))
     }
 
-    pub fn outputs<'a, DataType, DataValue>(
+    pub fn outputs<
+        'a,
+        DataType: DataTypeTrait<UserState>,
+        DataValue: WidgetValueTrait,
+        UserState: Clone,
+    >(
         &'a self,
-        graph: &'a Graph<NodeData, DataType, DataValue>,
-    ) -> impl Iterator<Item = &OutputParam<DataType>> + 'a {
+        graph: &'a Graph<NodeData, DataType, DataValue, UserState>,
+    ) -> impl Iterator<Item = &OutputParam<DataType, UserState>> + 'a {
         self.output_ids().map(|id| graph.get_output(id))
     }
 
@@ -220,19 +246,5 @@ impl<NodeData: NodeDataTrait> Node<NodeData> {
             .find(|(param_name, _id)| param_name == name)
             .map(|x| x.1)
             .ok_or_else(|| EguiGraphError::NoParameterNamed(self.id, name.into()))
-    }
-}
-
-impl<DataType, ValueType> InputParam<DataType, ValueType> {
-    pub fn value(&self) -> &ValueType {
-        &self.value
-    }
-
-    pub fn kind(&self) -> InputParamKind {
-        self.kind
-    }
-
-    pub fn node(&self) -> NodeId {
-        self.node
     }
 }

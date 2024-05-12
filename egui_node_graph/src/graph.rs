@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::*;
 
 #[cfg(feature = "persistence")]
@@ -43,7 +45,11 @@ fn shown_inline_default() -> bool {
 /// data for the inline widget (i.e. constant) value.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct InputParam<DataType, ValueType> {
+pub struct InputParam<
+    DataType: DataTypeTrait<UserState>,
+    ValueType: WidgetValueTrait,
+    UserState: Clone,
+> {
     pub id: InputId,
     /// The data type of this node. Used to determine incoming connections. This
     /// should always match the type of the InputParamValue, but the property is
@@ -58,6 +64,42 @@ pub struct InputParam<DataType, ValueType> {
     /// When true, the node is shown inline inside the node graph.
     #[cfg_attr(feature = "persistence", serde(default = "shown_inline_default"))]
     pub shown_inline: bool,
+    _phantom: PhantomData<UserState>,
+}
+
+impl<DataType: DataTypeTrait<UserState>, ValueType: WidgetValueTrait, UserState: Clone>
+    InputParam<DataType, ValueType, UserState>
+{
+    pub fn new(
+        id: InputId,
+        typ: DataType,
+        value: ValueType,
+        kind: InputParamKind,
+        node: NodeId,
+        shown_inline: bool,
+    ) -> Self {
+        Self {
+            id: id,
+            typ: typ,
+            value: value,
+            kind: kind,
+            node: node,
+            shown_inline: shown_inline,
+            _phantom: Default::default(),
+        }
+    }
+
+    pub fn value(&self) -> &ValueType {
+        &self.value
+    }
+
+    pub fn kind(&self) -> InputParamKind {
+        self.kind
+    }
+
+    pub fn node(&self) -> NodeId {
+        self.node
+    }
 }
 
 /// An output parameter. Output parameters are inside a node, and represent the
@@ -66,11 +108,23 @@ pub struct InputParam<DataType, ValueType> {
 /// cannot have a constant inline value.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct OutputParam<DataType> {
+pub struct OutputParam<DataType: DataTypeTrait<UserState>, UserState: Clone> {
     pub id: OutputId,
     /// Back-reference to the node containing this parameter.
     pub node: NodeId,
     pub typ: DataType,
+    _phantom: PhantomData<UserState>,
+}
+
+impl<DataType: DataTypeTrait<UserState>, UserState: Clone> OutputParam<DataType, UserState> {
+    pub fn new(id: OutputId, typ: DataType, node: NodeId) -> Self {
+        Self {
+            id: id,
+            typ: typ,
+            node: node,
+            _phantom: Default::default(),
+        }
+    }
 }
 
 /// The graph, containing nodes, input parameters and output parameters. Because
@@ -78,13 +132,18 @@ pub struct OutputParam<DataType> {
 /// crate to represent all the inner references in the data.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct Graph<NodeData: NodeDataTrait, DataType, ValueType> {
+pub struct Graph<
+    NodeData: NodeDataTrait,
+    DataType: DataTypeTrait<UserState>,
+    ValueType: WidgetValueTrait,
+    UserState: Clone,
+> {
     /// The [`Node`]s of the graph
     pub nodes: SlotMap<NodeId, Node<NodeData>>,
     /// The [`InputParam`]s of the graph
-    pub inputs: SlotMap<InputId, InputParam<DataType, ValueType>>,
+    pub inputs: SlotMap<InputId, InputParam<DataType, ValueType, UserState>>,
     /// The [`OutputParam`]s of the graph
-    pub outputs: SlotMap<OutputId, OutputParam<DataType>>,
+    pub outputs: SlotMap<OutputId, OutputParam<DataType, UserState>>,
     // Connects the input of a node, to the output of its predecessor that
     // produces it
     pub connections: SecondaryMap<InputId, OutputId>,

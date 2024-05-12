@@ -2,7 +2,13 @@ use super::*;
 
 macro_rules! impl_index_traits {
     ($id_type:ty, $output_type:ty, $arena:ident) => {
-        impl<A: NodeDataTrait, B, C> std::ops::Index<$id_type> for Graph<A, B, C> {
+        impl<
+                NodeData: NodeDataTrait,
+                DataType: DataTypeTrait<UserState>,
+                ValueType: WidgetValueTrait,
+                UserState: Clone,
+            > std::ops::Index<$id_type> for Graph<NodeData, DataType, ValueType, UserState>
+        {
             type Output = $output_type;
 
             fn index(&self, index: $id_type) -> &Self::Output {
@@ -16,7 +22,13 @@ macro_rules! impl_index_traits {
             }
         }
 
-        impl<A: NodeDataTrait, B, C> std::ops::IndexMut<$id_type> for Graph<A, B, C> {
+        impl<
+                NodeData: NodeDataTrait,
+                DataType: DataTypeTrait<UserState>,
+                ValueType: WidgetValueTrait,
+                UserState: Clone,
+            > std::ops::IndexMut<$id_type> for Graph<NodeData, DataType, ValueType, UserState>
+        {
             fn index_mut(&mut self, index: $id_type) -> &mut Self::Output {
                 self.$arena.get_mut(index).unwrap_or_else(|| {
                     panic!(
@@ -30,6 +42,6 @@ macro_rules! impl_index_traits {
     };
 }
 
-impl_index_traits!(NodeId, Node<A>, nodes);
-impl_index_traits!(InputId, InputParam<B, C>, inputs);
-impl_index_traits!(OutputId, OutputParam<B>, outputs);
+impl_index_traits!(NodeId, Node<NodeData>, nodes);
+impl_index_traits!(InputId, InputParam<DataType, ValueType, UserState>, inputs);
+impl_index_traits!(OutputId, OutputParam<DataType, UserState>, outputs);

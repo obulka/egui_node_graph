@@ -74,9 +74,15 @@ impl<UserResponse: UserResponseTrait, NodeData: NodeDataTrait> Default
         }
     }
 }
-pub struct GraphNodeWidget<'a, NodeData: NodeDataTrait, DataType, ValueType> {
+pub struct GraphNodeWidget<
+    'a,
+    NodeData: NodeDataTrait,
+    DataType: DataTypeTrait<UserState>,
+    ValueType: WidgetValueTrait,
+    UserState: Clone,
+> {
     pub position: &'a mut Pos2,
-    pub graph: &'a mut Graph<NodeData, DataType, ValueType>,
+    pub graph: &'a mut Graph<NodeData, DataType, ValueType, UserState>,
     pub port_locations: &'a mut PortLocations,
     pub node_rects: &'a mut NodeRects,
     pub node_id: NodeId,
@@ -106,6 +112,7 @@ where
     >,
     DataType: DataTypeTrait<UserState>,
     CategoryType: CategoryTrait,
+    UserState: Clone,
 {
     /// Call this from other panels to allow control of the nodegraph from them
     pub fn graph_editor_interaction(&mut self, ui: &mut Ui) {
@@ -386,14 +393,14 @@ where
             // Find a port to connect to
             fn snap_to_ports<
                 NodeData: NodeDataTrait,
-                UserState,
+                UserState: Clone,
                 DataType: DataTypeTrait<UserState>,
-                ValueType,
+                ValueType: WidgetValueTrait,
                 Key: slotmap::Key + Into<AnyParameterId>,
                 Value,
             >(
                 pan_zoom: &PanZoom,
-                graph: &Graph<NodeData, DataType, ValueType>,
+                graph: &Graph<NodeData, DataType, ValueType, UserState>,
                 port_type: &DataType,
                 ports: &SlotMap<Key, Value>,
                 port_locations: &PortLocations,
@@ -659,7 +666,7 @@ fn draw_connection(
 struct OuterRectMemory(Rect);
 
 impl<'a, NodeData, DataType, ValueType, UserResponse, UserState>
-    GraphNodeWidget<'a, NodeData, DataType, ValueType>
+    GraphNodeWidget<'a, NodeData, DataType, ValueType, UserState>
 where
     NodeData: NodeDataTrait<
         Response = UserResponse,
@@ -671,6 +678,7 @@ where
     ValueType:
         WidgetValueTrait<Response = UserResponse, UserState = UserState, NodeData = NodeData>,
     DataType: DataTypeTrait<UserState>,
+    UserState: Clone,
 {
     pub const MAX_NODE_SIZE: [f32; 2] = [200.0, 200.0];
 
@@ -869,7 +877,7 @@ where
         fn draw_port<NodeData, DataType, ValueType, UserResponse, UserState>(
             pan_zoom: &PanZoom,
             ui: &mut Ui,
-            graph: &Graph<NodeData, DataType, ValueType>,
+            graph: &Graph<NodeData, DataType, ValueType, UserState>,
             node_id: NodeId,
             user_state: &mut UserState,
             port_pos: Pos2,
@@ -882,6 +890,8 @@ where
             DataType: DataTypeTrait<UserState>,
             UserResponse: UserResponseTrait,
             NodeData: NodeDataTrait,
+            ValueType: WidgetValueTrait,
+            UserState: Clone,
         {
             let port_type = graph.any_param_type(param_id).unwrap();
 

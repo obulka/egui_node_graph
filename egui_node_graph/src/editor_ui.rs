@@ -312,7 +312,6 @@ where
                 .any(|event| matches!(event, egui::Event::Paste(_)))
         }) {
             let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
-
             for new_node in pasted_nodes.iter() {
                 self.node_positions.insert(
                     *new_node,

@@ -34,40 +34,51 @@ impl<
     /// Duplicate a node and return the new node's id
     pub fn duplicate_node(&mut self, node_id: NodeId) -> Option<NodeId> {
         if let Some(node_to_duplicate) = self.nodes.get(node_id) {
-            let mut duplicate_node: Node<NodeData> = (*node_to_duplicate).clone();
+            let mut duplicated_inputs: Vec<(String, InputId)> = node_to_duplicate.inputs.clone();
+            let mut duplicated_outputs: Vec<(String, OutputId)> = node_to_duplicate.outputs.clone();
+            let mut duplicate_node: Node<NodeData> = node_to_duplicate.clone();
 
-            let mut duplicated_inputs = Vec::<(String, InputId)>::new();
-            for (label, input_id) in duplicate_node.inputs.iter() {
-                if let Some(input) = self.inputs.get(*input_id) {
-                    let mut duplicated_input = (*input).clone();
-                    let duplicate_id = self.inputs.insert_with_key(|duplicate_id| {
-                        duplicated_input.id = duplicate_id;
-                        duplicated_input
-                    });
-                    duplicated_inputs.push((label.clone(), duplicate_id))
-                }
-            }
-            duplicate_node.inputs = duplicated_inputs;
-
-            let mut duplicated_outputs = Vec::<(String, OutputId)>::new();
-            for (label, output_id) in duplicate_node.outputs.iter() {
-                if let Some(output) = self.outputs.get(*output_id) {
-                    let mut duplicated_output = (*output).clone();
-                    let duplicate_id = self.outputs.insert_with_key(|duplicate_id| {
-                        duplicated_output.id = duplicate_id;
-                        duplicated_output
-                    });
-                    duplicated_outputs.push((label.clone(), duplicate_id))
-                }
-            }
-            duplicate_node.outputs = duplicated_outputs;
-
+            // Create and set the new node's id
             let new_node_id: NodeId = self.nodes.insert_with_key(|node_id| {
                 duplicate_node.id = node_id;
                 duplicate_node
             });
-            return Some(new_node_id);
+
+            // Update the cloned inputs with new ids, and the new node's id
+            for (_label, input_id) in duplicated_inputs.iter_mut() {
+                if let Some(input) = self.inputs.get(*input_id) {
+                    let mut duplicated_input = (*input).clone();
+                    duplicated_input.node = new_node_id;
+                    let duplicate_id = self.inputs.insert_with_key(|duplicate_id| {
+                        duplicated_input.id = duplicate_id;
+                        duplicated_input
+                    });
+                    *input_id = duplicate_id;
+                }
+            }
+
+            // Update the cloned outputs with new ids, and the new node's id
+            for (_label, output_id) in duplicated_outputs.iter_mut() {
+                if let Some(output) = self.outputs.get(*output_id) {
+                    let mut duplicated_output = (*output).clone();
+                    duplicated_output.node = new_node_id;
+                    let duplicate_id = self.outputs.insert_with_key(|duplicate_id| {
+                        duplicated_output.id = duplicate_id;
+                        duplicated_output
+                    });
+                    *output_id = duplicate_id;
+                }
+            }
+
+            // Update the new node with its new inputs and outputs
+            if let Some(node) = self.nodes.get_mut(new_node_id) {
+                node.inputs = duplicated_inputs;
+                node.outputs = duplicated_outputs;
+
+                return Some(new_node_id);
+            }
         }
+
         None
     }
 

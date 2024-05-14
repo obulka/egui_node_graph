@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::*;
 
 impl<
@@ -82,11 +80,11 @@ impl<
         None
     }
 
-    pub fn duplicate_nodes(&mut self, node_ids: &HashSet<NodeId>) -> HashSet<NodeId> {
-        let mut new_node_ids = HashSet::<NodeId>::new();
+    pub fn duplicate_nodes(&mut self, node_ids: &Vec<NodeId>) -> Vec<NodeId> {
+        let mut new_node_ids = Vec::<NodeId>::new();
         for node_id in node_ids.iter() {
             if let Some(new_node_id) = self.duplicate_node(*node_id) {
-                new_node_ids.insert(new_node_id);
+                new_node_ids.push(new_node_id);
             }
         }
 

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::iter::zip;
 
 use crate::color_hex_utils::*;
 use crate::utils::ColorUtils;
@@ -305,20 +306,33 @@ where
                 .iter()
                 .any(|event| matches!(event, egui::Event::Copy))
         }) {
-            self.copied_nodes = self.selected_nodes.clone();
+            self.copied_nodes = self.selected_nodes.clone().into_iter().collect();
         } else if ui.ctx().input(|i| {
             i.events
                 .iter()
                 .any(|event| matches!(event, egui::Event::Paste(_)))
         }) {
             let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
-            for new_node in pasted_nodes.iter() {
-                self.node_positions.insert(
-                    *new_node,
-                    cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2(),
-                );
+            let mut node_offset = Vec2::ZERO;
+            self.selected_nodes.clear();
+            for (iteration, (old_node, new_node)) in
+                zip(&self.copied_nodes, &pasted_nodes).enumerate()
+            {
+                if iteration == 0 {
+                    let first_node_position: Pos2 =
+                        cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
+                    self.node_positions.insert(*new_node, first_node_position);
+                    node_offset = first_node_position
+                        - *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO);
+                } else {
+                    self.node_positions.insert(
+                        *new_node,
+                        *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO) + node_offset,
+                    );
+                }
                 self.node_order.push(*new_node);
                 delayed_responses.push(NodeResponse::CreatedNode(*new_node));
+                self.selected_nodes.insert(*new_node);
             }
 
             should_close_node_finder = true;

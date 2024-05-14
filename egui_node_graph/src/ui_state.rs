@@ -33,7 +33,7 @@ pub struct GraphEditorState<
     /// currently selected node.
     pub selected_nodes: HashSet<NodeId>,
     /// THe nodes that have been copied
-    pub copied_nodes: HashSet<NodeId>,
+    pub copied_nodes: Vec<NodeId>,
     /// The mouse drag start position for an ongoing box selection.
     pub ongoing_box_selection: Option<egui::Pos2>,
     /// The position of each node.

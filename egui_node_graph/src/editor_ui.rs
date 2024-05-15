@@ -338,6 +338,19 @@ where
             should_close_node_finder = true;
         }
 
+        // Delete selected nodes with the delete key
+        if ui.ctx().input(|i| i.key_pressed(Key::Delete)) {
+            for node_id in self.selected_nodes.iter() {
+                if self.graph.nodes[*node_id].user_data.can_delete(
+                    *node_id,
+                    &self.graph,
+                    user_state,
+                ) {
+                    delayed_responses.push(NodeResponse::DeleteNodeUi(*node_id));
+                }
+            }
+        }
+
         /* Draw nodes */
         for node_id in self.node_order.iter().copied() {
             let responses = GraphNodeWidget {
@@ -535,6 +548,7 @@ where
                     self.node_positions.remove(*node_id);
                     // Make sure to not leave references to old nodes hanging
                     self.selected_nodes.retain(|id| *id != *node_id);
+                    self.copied_nodes.retain(|id| *id != *node_id);
                     self.node_order.retain(|id| *id != *node_id);
                 }
                 NodeResponse::DisconnectEvent { input, output } => {
@@ -1103,7 +1117,7 @@ where
 
         if can_delete && Self::close_button(pan_zoom, ui, outer_rect).clicked() {
             responses.push(NodeResponse::DeleteNodeUi(self.node_id));
-        };
+        }
 
         // Movement
         let drag_delta = window_response.drag_delta();

@@ -20,7 +20,7 @@ pub struct GraphEditorState<
     DataType: DataTypeTrait<UserState>,
     ValueType: WidgetValueTrait,
     NodeTemplate,
-    UserState: Clone,
+    UserState: UserStateTrait,
 > {
     pub graph: Graph<NodeData, DataType, ValueType, UserState>,
     /// Nodes are drawn in this order. Draw order is important because nodes
@@ -50,7 +50,7 @@ impl<
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
         NodeKind,
-        UserState: Clone,
+        UserState: UserStateTrait,
     > GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
     pub fn new(default_zoom: f32) -> Self {
@@ -65,7 +65,7 @@ impl<
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
         NodeKind,
-        UserState: Clone,
+        UserState: UserStateTrait,
     > Default for GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
     fn default() -> Self {

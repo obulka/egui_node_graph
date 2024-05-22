@@ -6,7 +6,7 @@ impl<
         NodeData: NodeDataTrait,
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
-        UserState: Clone,
+        UserState: UserStateTrait,
     > Graph<NodeData, DataType, ValueType, UserState>
 {
     pub fn new() -> Self {
@@ -238,7 +238,7 @@ impl<
         NodeData: NodeDataTrait,
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
-        UserState: Clone,
+        UserState: UserStateTrait,
     > Default for Graph<NodeData, DataType, ValueType, UserState>
 {
     fn default() -> Self {
@@ -251,7 +251,7 @@ impl<NodeData: NodeDataTrait> Node<NodeData> {
         'a,
         DataType: DataTypeTrait<UserState>,
         DataValue: WidgetValueTrait,
-        UserState: Clone,
+        UserState: UserStateTrait,
     >(
         &'a self,
         graph: &'a Graph<NodeData, DataType, DataValue, UserState>,
@@ -263,7 +263,7 @@ impl<NodeData: NodeDataTrait> Node<NodeData> {
         'a,
         DataType: DataTypeTrait<UserState>,
         DataValue: WidgetValueTrait,
-        UserState: Clone,
+        UserState: UserStateTrait,
     >(
         &'a self,
         graph: &'a Graph<NodeData, DataType, DataValue, UserState>,

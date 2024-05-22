@@ -100,6 +100,8 @@ pub struct MyGraphState {
     pub active_node: Option<NodeId>,
 }
 
+impl UserStateTrait for MyGraphState {}
+
 // =========== Then, you need to implement some traits ============
 
 // A trait for the data types, to tell the library how to display them

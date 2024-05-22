@@ -13,7 +13,7 @@ use super::*;
 /// cheap to construct.
 pub trait WidgetValueTrait: Default + Clone {
     type Response;
-    type UserState: Clone;
+    type UserState: UserStateTrait;
     type NodeData: NodeDataTrait;
 
     /// This method will be called for each input parameter with a widget with an disconnected
@@ -98,7 +98,7 @@ where
     /// Must be set to the custom user `NodeResponse` type
     type Response;
     /// Must be set to the custom user `UserState` type
-    type UserState: Clone;
+    type UserState: UserStateTrait;
     /// Must be set to the custom user `DataType` type
     type DataType: DataTypeTrait<Self::UserState>;
     /// Must be set to the custom user `ValueType` type
@@ -240,7 +240,7 @@ pub trait NodeTemplateTrait: Clone {
     /// Must be set to the custom user `ValueType` type
     type ValueType: WidgetValueTrait;
     /// Must be set to the custom user `UserState` type
-    type UserState: Clone;
+    type UserState: UserStateTrait;
     /// Must be a type that implements the [`CategoryTrait`] trait.
     ///
     /// `&'static str` is a good default if you intend to simply type out
@@ -284,3 +284,5 @@ pub trait NodeTemplateTrait: Clone {
 /// The custom user response types when drawing nodes in the graph must
 /// implement this trait.
 pub trait UserResponseTrait: Clone + std::fmt::Debug {}
+
+pub trait UserStateTrait: Clone {}

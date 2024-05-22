@@ -6,7 +6,7 @@ macro_rules! impl_index_traits {
                 NodeData: NodeDataTrait,
                 DataType: DataTypeTrait<UserState>,
                 ValueType: WidgetValueTrait,
-                UserState: Clone,
+                UserState: UserStateTrait,
             > std::ops::Index<$id_type> for Graph<NodeData, DataType, ValueType, UserState>
         {
             type Output = $output_type;
@@ -26,7 +26,7 @@ macro_rules! impl_index_traits {
                 NodeData: NodeDataTrait,
                 DataType: DataTypeTrait<UserState>,
                 ValueType: WidgetValueTrait,
-                UserState: Clone,
+                UserState: UserStateTrait,
             > std::ops::IndexMut<$id_type> for Graph<NodeData, DataType, ValueType, UserState>
         {
             fn index_mut(&mut self, index: $id_type) -> &mut Self::Output {

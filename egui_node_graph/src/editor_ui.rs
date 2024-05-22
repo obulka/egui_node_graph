@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 use std::iter::zip;
 
+use egui::epaint::{CubicBezierShape, RectShape};
+use egui::*;
+
 use crate::color_hex_utils::*;
 use crate::utils::ColorUtils;
 
 use super::*;
-use egui::epaint::{CubicBezierShape, RectShape};
-use egui::*;
 
 pub type PortLocations = std::collections::HashMap<AnyParameterId, Pos2>;
 pub type NodeRects = std::collections::HashMap<NodeId, Rect>;
@@ -80,7 +81,7 @@ pub struct GraphNodeWidget<
     NodeData: NodeDataTrait,
     DataType: DataTypeTrait<UserState>,
     ValueType: WidgetValueTrait,
-    UserState: Clone,
+    UserState: UserStateTrait,
 > {
     pub position: &'a mut Pos2,
     pub graph: &'a mut Graph<NodeData, DataType, ValueType, UserState>,
@@ -113,7 +114,7 @@ where
     >,
     DataType: DataTypeTrait<UserState>,
     CategoryType: CategoryTrait,
-    UserState: Clone,
+    UserState: UserStateTrait,
 {
     /// Call this from other panels to allow control of the nodegraph from them
     pub fn graph_editor_interaction(&mut self, ui: &mut Ui) {
@@ -301,42 +302,49 @@ where
             .ctx()
             .input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
 
-        if ui.ctx().input(|i| {
-            i.events
-                .iter()
-                .any(|event| matches!(event, egui::Event::Copy))
-        }) {
-            self.copied_nodes = self.selected_nodes.clone().into_iter().collect();
-        } else if ui.ctx().input(|i| {
-            i.events
-                .iter()
-                .any(|event| matches!(event, egui::Event::Paste(_)))
-        }) {
-            let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
-            let mut node_offset = Vec2::ZERO;
-            self.selected_nodes.clear();
-            for (iteration, (old_node, new_node)) in
-                zip(&self.copied_nodes, &pasted_nodes).enumerate()
-            {
-                if iteration == 0 {
-                    let first_node_position: Pos2 =
-                        cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
-                    self.node_positions.insert(*new_node, first_node_position);
-                    node_offset = first_node_position
-                        - *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO);
-                } else {
-                    self.node_positions.insert(
-                        *new_node,
-                        *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO) + node_offset,
-                    );
-                }
-                self.node_order.push(*new_node);
-                delayed_responses.push(NodeResponse::CreatedNode(*new_node));
-                self.selected_nodes.insert(*new_node);
-            }
+        ui.ctx().input(|input| {
+            for event in input.events.iter() {
+                match event {
+                    egui::Event::Copy => {
+                        self.copied_nodes = self.selected_nodes.clone().into_iter().collect();
+                        // if let Ok(serialized_graph) = serde_yaml::to_string(&self) {
+                        //     ui.output_mut(|output| {
+                        //         output.copied_text = serialized_graph;
+                        //     });
+                        // }
 
-            should_close_node_finder = true;
-        }
+                        should_close_node_finder = true;
+                    }
+                    egui::Event::Paste(_text) => {
+                        let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
+                        let mut node_offset = Vec2::ZERO;
+                        self.selected_nodes.clear();
+                        for (iteration, (old_node, new_node)) in
+                            zip(&self.copied_nodes, &pasted_nodes).enumerate()
+                        {
+                            if iteration == 0 {
+                                let first_node_position: Pos2 =
+                                    cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
+                                self.node_positions.insert(*new_node, first_node_position);
+                                node_offset = first_node_position
+                                    - *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO);
+                            } else {
+                                self.node_positions.insert(
+                                    *new_node,
+                                    *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO)
+                                        + node_offset,
+                                );
+                            }
+                            self.node_order.push(*new_node);
+                            delayed_responses.push(NodeResponse::CreatedNode(*new_node));
+                            self.selected_nodes.insert(*new_node);
+                        }
+                        should_close_node_finder = true;
+                    }
+                    _ => {}
+                }
+            }
+        });
 
         // Delete selected nodes with the delete key
         if ui.ctx().input(|i| i.key_pressed(Key::Delete)) {
@@ -419,7 +427,7 @@ where
             // Find a port to connect to
             fn snap_to_ports<
                 NodeData: NodeDataTrait,
-                UserState: Clone,
+                UserState: UserStateTrait,
                 DataType: DataTypeTrait<UserState>,
                 ValueType: WidgetValueTrait,
                 Key: slotmap::Key + Into<AnyParameterId>,
@@ -705,7 +713,7 @@ where
     ValueType:
         WidgetValueTrait<Response = UserResponse, UserState = UserState, NodeData = NodeData>,
     DataType: DataTypeTrait<UserState>,
-    UserState: Clone,
+    UserState: UserStateTrait,
 {
     pub const MAX_NODE_SIZE: [f32; 2] = [200.0, 200.0];
 
@@ -918,7 +926,7 @@ where
             UserResponse: UserResponseTrait,
             NodeData: NodeDataTrait,
             ValueType: WidgetValueTrait,
-            UserState: Clone,
+            UserState: UserStateTrait,
         {
             let port_type = graph.any_param_type(param_id).unwrap();
 

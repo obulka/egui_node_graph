@@ -48,7 +48,7 @@ fn shown_inline_default() -> bool {
 pub struct InputParam<
     DataType: DataTypeTrait<UserState>,
     ValueType: WidgetValueTrait,
-    UserState: Clone,
+    UserState: UserStateTrait,
 > {
     pub id: InputId,
     /// The data type of this node. Used to determine incoming connections. This
@@ -67,8 +67,11 @@ pub struct InputParam<
     _phantom: PhantomData<UserState>,
 }
 
-impl<DataType: DataTypeTrait<UserState>, ValueType: WidgetValueTrait, UserState: Clone>
-    InputParam<DataType, ValueType, UserState>
+impl<
+        DataType: DataTypeTrait<UserState>,
+        ValueType: WidgetValueTrait,
+        UserState: UserStateTrait,
+    > InputParam<DataType, ValueType, UserState>
 {
     pub fn new(
         id: InputId,
@@ -108,7 +111,7 @@ impl<DataType: DataTypeTrait<UserState>, ValueType: WidgetValueTrait, UserState:
 /// cannot have a constant inline value.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
-pub struct OutputParam<DataType: DataTypeTrait<UserState>, UserState: Clone> {
+pub struct OutputParam<DataType: DataTypeTrait<UserState>, UserState: UserStateTrait> {
     pub id: OutputId,
     /// Back-reference to the node containing this parameter.
     pub node: NodeId,
@@ -116,7 +119,9 @@ pub struct OutputParam<DataType: DataTypeTrait<UserState>, UserState: Clone> {
     _phantom: PhantomData<UserState>,
 }
 
-impl<DataType: DataTypeTrait<UserState>, UserState: Clone> OutputParam<DataType, UserState> {
+impl<DataType: DataTypeTrait<UserState>, UserState: UserStateTrait>
+    OutputParam<DataType, UserState>
+{
     pub fn new(id: OutputId, typ: DataType, node: NodeId) -> Self {
         Self {
             id: id,
@@ -136,7 +141,7 @@ pub struct Graph<
     NodeData: NodeDataTrait,
     DataType: DataTypeTrait<UserState>,
     ValueType: WidgetValueTrait,
-    UserState: Clone,
+    UserState: UserStateTrait,
 > {
     /// The [`Node`]s of the graph
     pub nodes: SlotMap<NodeId, Node<NodeData>>,

@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::iter::zip;
 
 use egui::epaint::{CubicBezierShape, RectShape};
 use egui::*;
@@ -116,6 +115,40 @@ where
     CategoryType: CategoryTrait,
     UserState: UserStateTrait,
 {
+    /// Merge another GraphEditorState object into the current one
+    /// and return the node ids of any new nodes
+    pub fn merge(&mut self, ui: &Ui, other: &mut Self) -> HashSet<NodeId> {
+        other.zoom(ui, self.pan_zoom.zoom / other.pan_zoom.zoom);
+
+        let old_to_new_nodes = self.graph.merge(&other.graph);
+
+        let editor_rect = ui.max_rect();
+        let cursor_pos = ui
+            .ctx()
+            .input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO));
+
+        let mut node_offset = Vec2::ZERO;
+        self.selected_nodes.clear();
+        for (iteration, (old_node, new_node)) in old_to_new_nodes.iter().enumerate() {
+            if iteration == 0 {
+                let first_node_position: Pos2 =
+                    cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
+                self.node_positions.insert(*new_node, first_node_position);
+                node_offset = first_node_position
+                    - *other.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO);
+            } else {
+                self.node_positions.insert(
+                    *new_node,
+                    *other.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO) + node_offset,
+                );
+            }
+            self.node_order.push(*new_node);
+            self.selected_nodes.insert(*new_node);
+        }
+
+        old_to_new_nodes.into_values().collect::<HashSet<NodeId>>()
+    }
+
     /// Call this from other panels to allow control of the nodegraph from them
     pub fn graph_editor_interaction(&mut self, ui: &mut Ui) {
         // Used to detect when the background was clicked
@@ -302,49 +335,43 @@ where
             .ctx()
             .input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
 
-        ui.ctx().input(|input| {
-            for event in input.events.iter() {
-                match event {
-                    egui::Event::Copy => {
-                        self.copied_nodes = self.selected_nodes.clone().into_iter().collect();
-                        // if let Ok(serialized_graph) = serde_yaml::to_string(&self) {
-                        //     ui.output_mut(|output| {
-                        //         output.copied_text = serialized_graph;
-                        //     });
-                        // }
-
-                        should_close_node_finder = true;
-                    }
-                    egui::Event::Paste(_text) => {
-                        let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
-                        let mut node_offset = Vec2::ZERO;
-                        self.selected_nodes.clear();
-                        for (iteration, (old_node, new_node)) in
-                            zip(&self.copied_nodes, &pasted_nodes).enumerate()
-                        {
-                            if iteration == 0 {
-                                let first_node_position: Pos2 =
-                                    cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
-                                self.node_positions.insert(*new_node, first_node_position);
-                                node_offset = first_node_position
-                                    - *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO);
-                            } else {
-                                self.node_positions.insert(
-                                    *new_node,
-                                    *self.node_positions.get(*old_node).unwrap_or(&Pos2::ZERO)
-                                        + node_offset,
-                                );
-                            }
-                            self.node_order.push(*new_node);
-                            delayed_responses.push(NodeResponse::CreatedNode(*new_node));
-                            self.selected_nodes.insert(*new_node);
-                        }
-                        should_close_node_finder = true;
-                    }
-                    _ => {}
-                }
-            }
-        });
+        // ui.ctx().input(|input| {
+        //     for event in input.events.iter() {
+        //         match event {
+        //             egui::Event::Copy => {
+        //                 self.copied_nodes = self.selected_nodes.clone();
+        //                 should_close_node_finder = true;
+        //             }
+        //             egui::Event::Paste(_text) => {
+        //                 let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
+        //                 let mut node_offset = Vec2::ZERO;
+        //                 self.selected_nodes.clear();
+        //                 for (iteration, (old_node, new_node)) in
+        //                     pasted_nodes.into_iter().enumerate()
+        //                 {
+        //                     if iteration == 0 {
+        //                         let first_node_position: Pos2 =
+        //                             cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
+        //                         self.node_positions.insert(new_node, first_node_position);
+        //                         node_offset = first_node_position
+        //                             - *self.node_positions.get(old_node).unwrap_or(&Pos2::ZERO);
+        //                     } else {
+        //                         self.node_positions.insert(
+        //                             new_node,
+        //                             *self.node_positions.get(old_node).unwrap_or(&Pos2::ZERO)
+        //                                 + node_offset,
+        //                         );
+        //                     }
+        //                     self.node_order.push(new_node);
+        //                     delayed_responses.push(NodeResponse::CreatedNode(new_node));
+        //                     self.selected_nodes.insert(new_node);
+        //                 }
+        //                 should_close_node_finder = true;
+        //             }
+        //             _ => {}
+        //         }
+        //     }
+        // });
 
         // Delete selected nodes with the delete key
         if ui.ctx().input(|i| i.key_pressed(Key::Delete)) {
@@ -556,7 +583,6 @@ where
                     self.node_positions.remove(*node_id);
                     // Make sure to not leave references to old nodes hanging
                     self.selected_nodes.retain(|id| *id != *node_id);
-                    self.copied_nodes.retain(|id| *id != *node_id);
                     self.node_order.retain(|id| *id != *node_id);
                 }
                 NodeResponse::DisconnectEvent { input, output } => {

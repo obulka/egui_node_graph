@@ -8,7 +8,7 @@ use egui_node_graph::*;
 /// The NodeData holds a custom data struct inside each node. It's useful to
 /// store additional information that doesn't live in parameters. For this
 /// example, the node data stores the template (i.e. the "type") of the node.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub struct MyNodeData {
     template: MyNodeTemplate,
@@ -17,7 +17,7 @@ pub struct MyNodeData {
 /// `DataType`s are what defines the possible range of connections when
 /// attaching two ports together. The graph UI will make sure to not allow
 /// attaching incompatible datatypes.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub enum MyDataType {
     Scalar,
@@ -69,7 +69,7 @@ impl MyValueType {
 /// NodeTemplate is a mechanism to define node templates. It's what the graph
 /// will display in the "new node" popup. The user code needs to tell the
 /// library how to convert a NodeTemplate into a Node.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub enum MyNodeTemplate {
     MakeScalar,
@@ -94,7 +94,7 @@ pub enum MyResponse {
 /// The graph 'global' state. This state struct is passed around to the node and
 /// parameter drawing callbacks. The contents of this struct are entirely up to
 /// the user. For this example, we use it to keep track of the 'active' node.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "persistence", derive(serde::Serialize, serde::Deserialize))]
 pub struct MyGraphState {
     pub active_node: Option<NodeId>,
@@ -420,12 +420,61 @@ impl eframe::App for NodeGraphExample {
         });
         let graph_response = egui::CentralPanel::default()
             .show(ctx, |ui| {
-                self.state.draw_graph_editor(
-                    ui,
-                    AllMyNodeTemplates,
-                    &mut self.user_state,
-                    Vec::default(),
-                )
+                #[cfg(feature = "persistence")]
+                {
+                    let mut responses = Vec::default();
+                    let mut copy_selected: bool = false;
+                    let mut pasted = String::new();
+
+                    ui.ctx().input(|input| {
+                        for event in input.events.iter() {
+                            match event {
+                                egui::Event::Copy => {
+                                    // App freezes if we set copied_text here, so flag and do it later
+                                    copy_selected = true;
+                                }
+                                egui::Event::Paste(text) => {
+                                    // App freezes if we paste here, so clone the text and do it later
+                                    pasted = text.to_string();
+                                }
+                                _ => {}
+                            }
+                        }
+                    });
+
+                    if copy_selected {
+                        if let Ok(serialized_state) =
+                            serde_json::to_string_pretty(&self.state.from_selected())
+                        {
+                            ui.output_mut(|output| {
+                                output.copied_text = serialized_state;
+                            });
+                        }
+                    } else if !pasted.is_empty() {
+                        if let Ok(mut deserialized_editor_state) = serde_json::from_str(&pasted) {
+                            let new_nodes = self.state.merge(ui, &mut deserialized_editor_state);
+                            for node_id in new_nodes.into_iter() {
+                                responses.push(NodeResponse::CreatedNode(node_id));
+                            }
+                        }
+                    }
+
+                    self.state.draw_graph_editor(
+                        ui,
+                        AllMyNodeTemplates,
+                        &mut self.user_state,
+                        responses,
+                    )
+                }
+                #[cfg(not(feature = "persistence"))]
+                {
+                    self.state.draw_graph_editor(
+                        ui,
+                        AllMyNodeTemplates,
+                        &mut self.user_state,
+                        Vec::default(),
+                    )
+                }
             })
             .inner;
         for node_response in graph_response.node_responses {

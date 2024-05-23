@@ -19,7 +19,7 @@ pub struct GraphEditorState<
     NodeData: NodeDataTrait,
     DataType: DataTypeTrait<UserState>,
     ValueType: WidgetValueTrait,
-    NodeTemplate,
+    NodeTemplate: NodeTemplateTrait,
     UserState: UserStateTrait,
 > {
     pub graph: Graph<NodeData, DataType, ValueType, UserState>,
@@ -32,8 +32,6 @@ pub struct GraphEditorState<
     /// The currently selected node. Some interface actions depend on the
     /// currently selected node.
     pub selected_nodes: HashSet<NodeId>,
-    /// THe nodes that have been copied
-    pub copied_nodes: Vec<NodeId>,
     /// The mouse drag start position for an ongoing box selection.
     pub ongoing_box_selection: Option<egui::Pos2>,
     /// The position of each node.
@@ -49,7 +47,7 @@ impl<
         NodeData: NodeDataTrait,
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
-        NodeKind,
+        NodeKind: NodeTemplateTrait,
         UserState: UserStateTrait,
     > GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
@@ -59,12 +57,33 @@ impl<
             ..Default::default()
         }
     }
+
+    /// Create a new GraphEditorState from the selected nodes
+    pub fn from_selected(&self) -> Self {
+        let mut editor_state: Self = self.clone();
+
+        let graph = self.graph.from_nodes(&self.selected_nodes);
+        editor_state.graph = graph;
+        editor_state.node_finder = None;
+        editor_state.connection_in_progress = None;
+        editor_state.ongoing_box_selection = None;
+        editor_state.selected_nodes.clear();
+        editor_state
+            .node_order
+            .retain(|id| editor_state.graph.nodes.contains_key(*id));
+        editor_state
+            .node_positions
+            .retain(|id, _pos| editor_state.graph.nodes.contains_key(id));
+
+        editor_state
+    }
 }
+
 impl<
         NodeData: NodeDataTrait,
         DataType: DataTypeTrait<UserState>,
         ValueType: WidgetValueTrait,
-        NodeKind,
+        NodeKind: NodeTemplateTrait,
         UserState: UserStateTrait,
     > Default for GraphEditorState<NodeData, DataType, ValueType, NodeKind, UserState>
 {
@@ -74,7 +93,6 @@ impl<
             node_order: Default::default(),
             connection_in_progress: Default::default(),
             selected_nodes: Default::default(),
-            copied_nodes: Default::default(),
             ongoing_box_selection: Default::default(),
             node_positions: Default::default(),
             node_finder: Default::default(),

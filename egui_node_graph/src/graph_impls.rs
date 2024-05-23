@@ -31,9 +31,107 @@ impl<
         })
     }
 
+    pub fn merge(&mut self, other: &Self) -> HashMap<NodeId, NodeId> {
+        let mut old_to_new_node_ids = HashMap::<NodeId, NodeId>::new();
+        let mut old_connections = HashMap::<OutputId, HashSet<InputId>>::new();
+        let mut old_to_new_inputs = HashMap::<InputId, InputId>::new();
+        let mut old_to_new_outputs = HashMap::<OutputId, OutputId>::new();
+        for node_id in other.iter_nodes() {
+            if let Some(node_to_merge) = other.nodes.get(node_id) {
+                let mut duplicated_inputs: Vec<(String, InputId)> = node_to_merge.inputs.clone();
+                let mut duplicated_outputs: Vec<(String, OutputId)> = node_to_merge.outputs.clone();
+                let mut duplicate_node: Node<NodeData> = node_to_merge.clone();
+
+                // Create and set the new node's id
+                let new_node_id: NodeId = self.nodes.insert_with_key(|node_id| {
+                    duplicate_node.id = node_id;
+                    duplicate_node
+                });
+
+                // Update the cloned inputs with new ids, and the new node's id
+                for (_label, input_id) in duplicated_inputs.iter_mut() {
+                    if let Some(input) = other.inputs.get(*input_id) {
+                        let mut duplicated_input = (*input).clone();
+                        duplicated_input.node = new_node_id;
+                        let duplicate_id = self.inputs.insert_with_key(|duplicate_id| {
+                            duplicated_input.id = duplicate_id;
+                            duplicated_input
+                        });
+                        if let Some(output_id) = other.connections.get(*input_id) {
+                            // Maintain a list of connections to duplicate
+                            if let Some(connected_inputs) = old_connections.get_mut(output_id) {
+                                connected_inputs.insert(*input_id);
+                            } else {
+                                let mut inputs = HashSet::<InputId>::new();
+                                inputs.insert(*input_id);
+                                old_connections.insert(*output_id, inputs);
+                            }
+                            // Don't need to store an input if it isn't connected
+                            // but if it is, we need a LUT for the original to new ids
+                            old_to_new_inputs.insert(*input_id, duplicate_id);
+                        }
+                        *input_id = duplicate_id;
+                    }
+                }
+
+                // Update the cloned outputs with new ids, and the new node's id
+                for (_label, output_id) in duplicated_outputs.iter_mut() {
+                    if let Some(output) = other.outputs.get(*output_id) {
+                        let mut duplicated_output = (*output).clone();
+                        duplicated_output.node = new_node_id;
+                        let duplicate_id = self.outputs.insert_with_key(|duplicate_id| {
+                            duplicated_output.id = duplicate_id;
+                            duplicated_output
+                        });
+                        // Keep a LUT of old to new output ids for connecting new nodes
+                        old_to_new_outputs.insert(*output_id, duplicate_id);
+                        *output_id = duplicate_id;
+                    }
+                }
+
+                // Update the new node with its new inputs and outputs
+                if let Some(node) = self.nodes.get_mut(new_node_id) {
+                    node.inputs = duplicated_inputs;
+                    node.outputs = duplicated_outputs;
+
+                    old_to_new_node_ids.insert(node_id, new_node_id);
+                }
+            }
+        }
+
+        // Form equivalent connections
+        for (old_output_id, old_connected_input_ids) in old_connections.iter() {
+            if let Some(new_output_id) = old_to_new_outputs.get(old_output_id) {
+                for old_input_id in old_connected_input_ids.iter() {
+                    if let Some(new_input_id) = old_to_new_inputs.get(old_input_id) {
+                        self.connections.insert(*new_input_id, *new_output_id);
+                    }
+                }
+            }
+        }
+
+        old_to_new_node_ids
+    }
+
+    pub fn from_nodes(&self, node_ids: &HashSet<NodeId>) -> Self {
+        let mut new_graph: Self = self.clone();
+
+        for node_id in self.iter_nodes() {
+            if node_ids.contains(&node_id) {
+                continue;
+            }
+            let (_node, disconnections) = new_graph.remove_node(node_id);
+            for (input_id, _output_id) in disconnections.iter() {
+                new_graph.remove_connection(*input_id);
+            }
+        }
+
+        new_graph
+    }
+
     /// Duplicate nodes and return the new node's ids in the equivalent order
-    pub fn duplicate_nodes(&mut self, node_ids: &Vec<NodeId>) -> Vec<NodeId> {
-        let mut new_node_ids = Vec::<NodeId>::new();
+    pub fn duplicate_nodes(&mut self, node_ids: &HashSet<NodeId>) -> HashMap<NodeId, NodeId> {
+        let mut old_to_new_node_ids = HashMap::<NodeId, NodeId>::new();
         let mut old_connections = HashMap::<OutputId, HashSet<InputId>>::new();
         let mut old_to_new_inputs = HashMap::<InputId, InputId>::new();
         let mut old_to_new_outputs = HashMap::<OutputId, OutputId>::new();
@@ -97,7 +195,7 @@ impl<
                     node.inputs = duplicated_inputs;
                     node.outputs = duplicated_outputs;
 
-                    new_node_ids.push(new_node_id);
+                    old_to_new_node_ids.insert(*node_id, new_node_id);
                 }
             }
         }
@@ -113,7 +211,7 @@ impl<
             }
         }
 
-        new_node_ids
+        old_to_new_node_ids
     }
 
     pub fn add_input_param(

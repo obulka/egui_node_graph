@@ -335,44 +335,6 @@ where
             .ctx()
             .input(|i| i.modifiers.matches_logically(Modifiers::SHIFT));
 
-        // ui.ctx().input(|input| {
-        //     for event in input.events.iter() {
-        //         match event {
-        //             egui::Event::Copy => {
-        //                 self.copied_nodes = self.selected_nodes.clone();
-        //                 should_close_node_finder = true;
-        //             }
-        //             egui::Event::Paste(_text) => {
-        //                 let pasted_nodes = self.graph.duplicate_nodes(&self.copied_nodes);
-        //                 let mut node_offset = Vec2::ZERO;
-        //                 self.selected_nodes.clear();
-        //                 for (iteration, (old_node, new_node)) in
-        //                     pasted_nodes.into_iter().enumerate()
-        //                 {
-        //                     if iteration == 0 {
-        //                         let first_node_position: Pos2 =
-        //                             cursor_pos - self.pan_zoom.pan - editor_rect.min.to_vec2();
-        //                         self.node_positions.insert(new_node, first_node_position);
-        //                         node_offset = first_node_position
-        //                             - *self.node_positions.get(old_node).unwrap_or(&Pos2::ZERO);
-        //                     } else {
-        //                         self.node_positions.insert(
-        //                             new_node,
-        //                             *self.node_positions.get(old_node).unwrap_or(&Pos2::ZERO)
-        //                                 + node_offset,
-        //                         );
-        //                     }
-        //                     self.node_order.push(new_node);
-        //                     delayed_responses.push(NodeResponse::CreatedNode(new_node));
-        //                     self.selected_nodes.insert(new_node);
-        //                 }
-        //                 should_close_node_finder = true;
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        // });
-
         // Delete selected nodes with the delete key
         if ui.ctx().input(|i| i.key_pressed(Key::Delete)) {
             for node_id in self.selected_nodes.iter() {
@@ -671,6 +633,7 @@ where
         }
 
         if r.dragged() && ui.ctx().input(|i| i.pointer.middle_down()) {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Move);
             self.pan_zoom.pan += ui.ctx().input(|i| i.pointer.delta());
         }
 
@@ -687,6 +650,10 @@ where
         }
         if mouse.primary_released() || drag_released_on_background {
             self.ongoing_box_selection = None;
+        }
+
+        if self.connection_in_progress.is_some() || self.ongoing_box_selection.is_some() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grabbing);
         }
 
         GraphResponse {
@@ -977,6 +944,14 @@ where
             };
 
             let port_color = if close_enough {
+                let mouse_down: bool = ui.ctx().input(|input| input.pointer.primary_down());
+                ui.output_mut(|output| {
+                    output.cursor_icon = if mouse_down {
+                        egui::CursorIcon::Grabbing
+                    } else {
+                        egui::CursorIcon::Grab
+                    }
+                });
                 Color32::WHITE
             } else {
                 port_type.data_type_color(user_state)
@@ -1161,6 +1136,11 @@ where
                 drag_delta,
             });
             responses.push(NodeResponse::RaiseNode(self.node_id));
+        }
+        if window_response.dragged() || window_response.is_pointer_button_down_on() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grabbing);
+        } else if window_response.hovered() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grab);
         }
 
         // Node selection

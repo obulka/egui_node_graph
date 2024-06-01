@@ -1139,8 +1139,6 @@ where
         }
         if window_response.dragged() || window_response.is_pointer_button_down_on() {
             ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grabbing);
-        } else if window_response.hovered() {
-            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grab);
         }
 
         // Node selection

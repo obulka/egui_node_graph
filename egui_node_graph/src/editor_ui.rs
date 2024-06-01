@@ -1137,7 +1137,7 @@ where
             });
             responses.push(NodeResponse::RaiseNode(self.node_id));
         }
-        if window_response.dragged() || window_response.is_pointer_button_down_on() {
+        if window_response.dragged() {
             ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grabbing);
         }
 

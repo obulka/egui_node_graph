@@ -757,6 +757,8 @@ where
         // Scale hack, otherwise some (larger) rects expand too much when zoomed out
         outer_rect_bounds.max.x =
             outer_rect_bounds.min.x + outer_rect_bounds.width() * pan_zoom.zoom;
+        outer_rect_bounds.max.y =
+            outer_rect_bounds.min.y + outer_rect_bounds.height() * pan_zoom.zoom;
 
         let mut inner_rect = outer_rect_bounds.shrink2(margin);
 

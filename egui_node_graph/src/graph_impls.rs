@@ -353,7 +353,7 @@ impl<NodeData: NodeDataTrait> Node<NodeData> {
     >(
         &'a self,
         graph: &'a Graph<NodeData, DataType, DataValue, UserState>,
-    ) -> impl Iterator<Item = &InputParam<DataType, DataValue, UserState>> + 'a {
+    ) -> impl Iterator<Item = &'a InputParam<DataType, DataValue, UserState>> + 'a {
         self.input_ids().map(|id| graph.get_input(id))
     }
 
@@ -365,7 +365,7 @@ impl<NodeData: NodeDataTrait> Node<NodeData> {
     >(
         &'a self,
         graph: &'a Graph<NodeData, DataType, DataValue, UserState>,
-    ) -> impl Iterator<Item = &OutputParam<DataType, UserState>> + 'a {
+    ) -> impl Iterator<Item = &'a OutputParam<DataType, UserState>> + 'a {
         self.output_ids().map(|id| graph.get_output(id))
     }
 

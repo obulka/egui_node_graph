@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use egui::epaint::{CubicBezierShape, RectShape};
+use egui::epaint::{CornerRadiusF32, CubicBezierShape, RectShape};
 use egui::*;
 
 use crate::color_hex_utils::*;
@@ -592,6 +592,7 @@ where
                 2.0,
                 bg_color,
                 Stroke::new(3.0, stroke_color),
+                StrokeKind::Middle,
             );
             if !shift_pressed {
                 self.selected_nodes.clear();
@@ -720,6 +721,7 @@ where
             Rect::from_min_size(*self.position + self.pan, Self::MAX_NODE_SIZE.into()),
             Layout::default(),
             self.node_id,
+            None,
         );
 
         Self::show_graph_node(self, pan_zoom, &mut child_ui, user_state)
@@ -766,7 +768,7 @@ where
         inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
         inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
 
-        let mut child_ui = ui.child_ui(inner_rect, *ui.layout());
+        let mut child_ui = ui.child_ui(inner_rect, *ui.layout(), None);
 
         // Get interaction rect from memory, it may expand after the window response on resize.
         let interaction_rect = ui
@@ -1059,7 +1061,7 @@ where
 
         let (shape, outline) = {
             let rounding_radius = 4.0 * pan_zoom.zoom;
-            let rounding = Rounding::same(rounding_radius);
+            let rounding = CornerRadiusF32::same(rounding_radius);
 
             let titlebar_height = title_height + margin.y;
             let titlebar_rect =
@@ -1072,6 +1074,7 @@ where
                     .titlebar_color(ui, self.node_id, self.graph, user_state)
                     .unwrap_or_else(|| background_color.lighten(0.8)),
                 Stroke::NONE,
+                StrokeKind::Outside,
             ));
 
             let body_rect = Rect::from_min_size(
@@ -1080,9 +1083,10 @@ where
             );
             let body = Shape::Rect(RectShape::new(
                 body_rect,
-                Rounding::ZERO,
+                CornerRadius::ZERO,
                 background_color,
                 Stroke::NONE,
+                StrokeKind::Outside,
             ));
 
             let bottom_body_rect = Rect::from_min_size(
@@ -1094,6 +1098,7 @@ where
                 rounding,
                 background_color,
                 Stroke::NONE,
+                StrokeKind::Outside,
             ));
 
             let node_rect = titlebar_rect.union(body_rect).union(bottom_body_rect);
@@ -1103,6 +1108,7 @@ where
                     rounding,
                     Color32::WHITE.lighten(0.8),
                     Stroke::NONE,
+                    StrokeKind::Outside,
                 ))
             } else {
                 Shape::Noop
@@ -1160,7 +1166,7 @@ where
         let margin = 8.0 * pan_zoom.zoom;
         let size = 10.0 * pan_zoom.zoom;
         let stroke_width = 2.0;
-        let offs = margin + size / 2.0;
+        let offs = margin + size * 0.5;
 
         let position = pos2(node_rect.right() - offs, node_rect.top() + offs);
         let rect = Rect::from_center_size(position, vec2(size, size));

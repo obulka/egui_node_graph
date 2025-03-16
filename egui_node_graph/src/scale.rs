@@ -90,7 +90,7 @@ impl Scale for Style {
             text_style.size *= amount;
         }
 
-        // self.spacing.item_spacing.scale(amount);
+        // self.spacing.item_spacing.scale(amount); // Broken in egui/0.31
         self.spacing.window_margin.scale(amount);
         self.spacing.button_padding.scale(amount);
         self.spacing.indent *= amount;

@@ -226,8 +226,7 @@ where
         if ui.rect_contains_pointer(editor_rect) || self.pan_zoom.enable_zoom_from_out_of_rect {
             let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
             if scroll_delta != 0.0 {
-                let zoom_delta = (scroll_delta * 0.002).exp();
-                self.zoom(ui, zoom_delta);
+                self.zoom(ui, (scroll_delta * 0.002).exp());
             }
         }
 
@@ -258,7 +257,7 @@ where
                 ui.ctx().input(|i| {
                     i.pointer
                         .hover_pos()
-                        .unwrap_or(editor_rect.size().to_pos2() / 2.)
+                        .unwrap_or(editor_rect.size().to_pos2() * 0.5)
                         - editor_rect.min
                 }),
             );
@@ -929,7 +928,7 @@ where
 
             let port_rect = Rect::from_center_size(
                 port_pos,
-                egui::Vec2::splat(2. * DISTANCE_TO_CONNECT) * pan_zoom.zoom,
+                egui::Vec2::splat(2. * DISTANCE_TO_CONNECT * pan_zoom.zoom),
             );
 
             let sense = if ongoing_drag.is_some() {

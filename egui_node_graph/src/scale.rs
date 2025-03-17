@@ -77,8 +77,8 @@ impl Scale for Shadow {
 impl Scale for WidgetVisuals {
     fn scale(&mut self, amount: f32) {
         self.bg_stroke.scale(amount);
-        self.fg_stroke.scale(amount);
         self.corner_radius.scale(amount);
+        self.fg_stroke.scale(amount);
         self.expansion *= amount;
     }
 }
@@ -120,6 +120,7 @@ impl Scale for Spacing {
 
 impl Scale for Interaction {
     fn scale(&mut self, amount: f32) {
+        self.interact_radius *= amount;
         self.resize_grab_radius_side *= amount;
         self.resize_grab_radius_corner *= amount;
     }
@@ -139,24 +140,27 @@ impl Scale for Visuals {
     fn scale(&mut self, amount: f32) {
         self.widgets.scale(amount);
         self.selection.stroke.scale(amount);
-        self.resize_corner_size *= amount;
-        self.menu_corner_radius.scale(amount);
-        self.text_cursor.stroke.scale(amount);
-        self.clip_rect_margin *= amount;
         self.window_corner_radius.scale(amount);
         self.window_shadow.scale(amount);
+        self.window_stroke.scale(amount);
+        self.menu_corner_radius.scale(amount);
         self.popup_shadow.scale(amount);
+        self.resize_corner_size *= amount;
+        self.text_cursor.stroke.scale(amount);
+        self.clip_rect_margin *= amount;
     }
 }
 
 impl Scale for Style {
     fn scale(&mut self, amount: f32) {
-        if let Some(ov_font_id) = &mut self.override_font_id {
-            ov_font_id.size *= amount;
+        if let Some(override_font_id) = &mut self.override_font_id {
+            override_font_id.size *= amount;
+            override_font_id.size = override_font_id.size.round();
         }
 
         for text_style in self.text_styles.values_mut() {
             text_style.size *= amount;
+            text_style.size = text_style.size.round();
         }
 
         self.spacing.scale(amount);

@@ -677,7 +677,7 @@ fn draw_connection(
         color,
     };
 
-    let control_scale = ((dst_pos.x - src_pos.x) / 2.0).max(30.0);
+    let control_scale = ((dst_pos.x - src_pos.x) * 0.333).max(30.0) * pan_zoom.zoom;
     let src_control = src_pos + Vec2::X * control_scale;
     let dst_control = dst_pos - Vec2::X * control_scale;
 
@@ -859,7 +859,7 @@ where
                     );
 
                     let height_after = ui.min_rect().bottom();
-                    input_port_heights.push((height_before + height_after) / 2.0);
+                    input_port_heights.push((height_before + height_after) * 0.5);
                 }
             }
 
@@ -882,7 +882,7 @@ where
                 );
 
                 let height_after = ui.min_rect().bottom();
-                output_port_heights.push((height_before + height_after) / 2.0);
+                output_port_heights.push((height_before + height_after) * 0.5);
             }
 
             responses.extend(self.graph[self.node_id].user_data.bottom_ui(
@@ -1166,7 +1166,7 @@ where
         // Measurements
         let margin = 8.0 * pan_zoom.zoom;
         let size = 10.0 * pan_zoom.zoom;
-        let stroke_width = 2.0;
+        let stroke_width = 2.0 * pan_zoom.zoom;
         let offs = margin + size * 0.5;
 
         let position = pos2(node_rect.right() - offs, node_rect.top() + offs);

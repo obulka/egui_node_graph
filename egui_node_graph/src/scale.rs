@@ -96,7 +96,7 @@ impl Scale for ScrollStyle {
 
 impl Scale for Spacing {
     fn scale(&mut self, amount: f32) {
-        // self.item_spacing.scale(amount); // Broken in egui/0.31
+        self.item_spacing.scale(amount);
         self.window_margin.scale(amount);
         self.button_padding.scale(amount);
         self.menu_margin.scale(amount);

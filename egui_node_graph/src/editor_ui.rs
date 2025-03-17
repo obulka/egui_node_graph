@@ -809,7 +809,6 @@ where
                     self.graph,
                     user_state,
                 ));
-                ui.add_space(8.0 * pan_zoom.zoom); // The size of the little cross icon
             });
             ui.add_space(margin.y);
             title_height = ui.min_size().y;

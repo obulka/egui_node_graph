@@ -155,12 +155,10 @@ impl Scale for Style {
     fn scale(&mut self, amount: f32) {
         if let Some(override_font_id) = &mut self.override_font_id {
             override_font_id.size *= amount;
-            override_font_id.size = override_font_id.size.round();
         }
 
         for text_style in self.text_styles.values_mut() {
             text_style.size *= amount;
-            text_style.size = text_style.size.round();
         }
 
         self.spacing.scale(amount);

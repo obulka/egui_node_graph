@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+use egui::emath::GuiRounding;
 use egui::{Style, Ui, Vec2};
 #[cfg(feature = "persistence")]
 use serde::{Deserialize, Serialize};
@@ -154,7 +155,21 @@ pub fn show_zoomed<R, F>(
 where
     F: FnOnce(&mut Ui) -> R,
 {
-    *ui.style_mut() = (*zoomed_style).clone();
+    let mut zoomed_style: Style = (*zoomed_style).clone();
+
+    let pixels_per_point: f32 = ui.painter().pixels_per_point();
+
+    if let Some(override_font_id) = &mut zoomed_style.override_font_id {
+        override_font_id.size = override_font_id
+            .size
+            .round_to_pixel_center(pixels_per_point);
+    }
+
+    for text_style in zoomed_style.text_styles.values_mut() {
+        text_style.size = text_style.size.round_to_pixel_center(pixels_per_point);
+    }
+
+    *ui.style_mut() = zoomed_style;
     let response = add_content(ui);
     *ui.style_mut() = (*default_style).clone();
 

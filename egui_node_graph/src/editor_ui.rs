@@ -794,19 +794,12 @@ where
 
         child_ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.add(
-                    Label::new(
-                        RichText::new(&self.graph[self.node_id].label)
-                            .text_style(TextStyle::Button)
-                            .color(text_color),
-                    )
-                    .selectable(false),
-                );
                 responses.extend(self.graph[self.node_id].user_data.top_bar_ui(
                     ui,
                     self.node_id,
                     self.graph,
                     user_state,
+                    &self.graph[self.node_id].label,
                 ));
             });
             ui.add_space(margin.y);

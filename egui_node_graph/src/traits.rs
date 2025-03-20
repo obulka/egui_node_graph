@@ -1,4 +1,4 @@
-use egui::Label;
+use egui;
 
 use super::*;
 
@@ -45,7 +45,7 @@ pub trait WidgetValueTrait: Default + Clone {
         _user_state: &mut Self::UserState,
         _node_data: &Self::NodeData,
     ) -> Vec<Self::Response> {
-        ui.add(Label::new(param_name).selectable(false));
+        ui.add(egui::Button::new(param_name).stroke(egui::Stroke::NONE));
 
         Default::default()
     }
@@ -118,14 +118,17 @@ where
     /// UI to draw on the top bar of the node.
     fn top_bar_ui(
         &self,
-        _ui: &mut egui::Ui,
+        ui: &mut egui::Ui,
         _node_id: NodeId,
         _graph: &Graph<Self, Self::DataType, Self::ValueType, Self::UserState>,
         _user_state: &mut Self::UserState,
+        node_name: &str,
     ) -> Vec<NodeResponse<Self::Response, Self>>
     where
         Self::Response: UserResponseTrait,
     {
+        ui.add(egui::Button::new(node_name).stroke(egui::Stroke::NONE));
+
         Default::default()
     }
 
@@ -143,7 +146,7 @@ where
     where
         Self::Response: UserResponseTrait,
     {
-        ui.add(Label::new(param_name).selectable(false));
+        ui.add(egui::Button::new(param_name).stroke(egui::Stroke::NONE));
 
         Default::default()
     }

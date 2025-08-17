@@ -1,4 +1,4 @@
-use egui::epaint::{CornerRadius, CornerRadiusF32, Margin, Marginf, Shadow};
+use egui::epaint::{CornerRadius, CornerRadiusF32, Margin, MarginF32, Shadow};
 use egui::{
     style::{Interaction, ScrollStyle, Visuals, WidgetVisuals, Widgets},
     Spacing, Stroke, Style, Vec2,
@@ -35,7 +35,7 @@ impl Scale for Margin {
     }
 }
 
-impl Scale for Marginf {
+impl Scale for MarginF32 {
     fn scale(&mut self, amount: f32) {
         self.left *= amount;
         self.right *= amount;

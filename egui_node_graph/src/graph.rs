@@ -132,6 +132,56 @@ impl<DataType: DataTypeTrait<UserState>, UserState: UserStateTrait>
     }
 }
 
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "persistence", derive(Serialize, Deserialize))]
+pub struct Connections {
+    parents: SecondaryMap<InputId, OutputId>,
+    children: SecondaryMap<OutputId, InputId>,
+}
+
+impl Connections {
+    pub fn get_parent(&self, input_id: InputId) -> Option<&OutputId> {
+        self.parents.get(input_id)
+    }
+
+    pub fn get_child(&self, output_id: OutputId) -> Option<&InputId> {
+        self.children.get(output_id)
+    }
+
+    pub fn remove(&mut self, input_id: InputId) -> Option<OutputId> {
+        if let Some(output_id) = self.parents.remove(input_id) {
+            self.children.remove(output_id);
+            return Some(output_id);
+        }
+        None
+    }
+
+    pub fn insert(&mut self, input_id: InputId, output_id: OutputId) {
+        self.parents.insert(input_id, output_id);
+        self.children.insert(output_id, input_id);
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (InputId, OutputId)> + '_ {
+        self.parents.iter().map(|(i, o)| (i, *o))
+    }
+
+    pub fn retain_parents<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut InputId, &mut OutputId) -> bool,
+    {
+        self.parents.retain(|mut i, o| f(&mut i, o));
+        self.children.retain(|mut o, i| f(i, &mut o));
+    }
+
+    pub fn retain_children<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut OutputId, &mut InputId) -> bool,
+    {
+        self.parents.retain(|mut i, o| f(o, &mut i));
+        self.children.retain(|mut o, i| f(&mut o, i));
+    }
+}
+
 /// The graph, containing nodes, input parameters and output parameters. Because
 /// graphs are full of self-referential structures, this type uses the `slotmap`
 /// crate to represent all the inner references in the data.
@@ -151,5 +201,5 @@ pub struct Graph<
     pub outputs: SlotMap<OutputId, OutputParam<DataType, UserState>>,
     // Connects the input of a node, to the output of its predecessor that
     // produces it
-    pub connections: SecondaryMap<InputId, OutputId>,
+    pub connections: Connections,
 }

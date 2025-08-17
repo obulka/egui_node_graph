@@ -486,7 +486,7 @@ where
             );
         }
 
-        for (input, output) in self.graph.iter_connections() {
+        for (input, output) in self.graph.connections.iter() {
             let port_type = self
                 .graph
                 .any_param_type(AnyParameterId::Output(output))
@@ -515,7 +515,7 @@ where
                     self.connection_in_progress = Some((*node_id, *port));
                 }
                 NodeResponse::ConnectEventEnded { input, output } => {
-                    self.graph.add_connection(*output, *input)
+                    self.graph.connections.insert(*input, *output)
                 }
                 NodeResponse::CreatedNode(_) => {
                     //Convenience NodeResponse for users
@@ -548,7 +548,7 @@ where
                 }
                 NodeResponse::DisconnectEvent { input, output } => {
                     let other_node = self.graph.get_output(*output).node;
-                    self.graph.remove_connection(*input);
+                    self.graph.connections.remove(*input);
                     self.connection_in_progress =
                         Some((other_node, AnyParameterId::Output(*output)));
                 }

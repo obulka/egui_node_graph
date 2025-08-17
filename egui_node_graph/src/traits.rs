@@ -86,7 +86,7 @@ pub trait DataTypeTrait<UserState>: PartialEq + Eq + Clone {
     ///     }
     /// }
     /// ```
-    fn name(&self) -> std::borrow::Cow<str>;
+    fn name(&self) -> std::borrow::Cow<'_, str>;
 }
 
 /// This trait must be implemented for the `NodeData` generic parameter of the
@@ -256,7 +256,7 @@ pub trait NodeTemplateTrait: Clone {
     /// The return type is Cow<str> to allow returning owned or borrowed values
     /// more flexibly. Refer to the documentation for `DataTypeTrait::name` for
     /// more information
-    fn node_finder_label(&self, user_state: &mut Self::UserState) -> std::borrow::Cow<str>;
+    fn node_finder_label(&self, user_state: &mut Self::UserState) -> std::borrow::Cow<'_, str>;
 
     /// Vec of categories to which the node belongs.
     ///

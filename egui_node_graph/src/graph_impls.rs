@@ -14,7 +14,7 @@ impl<
             nodes: SlotMap::default(),
             inputs: SlotMap::default(),
             outputs: SlotMap::default(),
-            connections: SecondaryMap::default(),
+            connections: Connections::default(),
         }
     }
 
@@ -57,7 +57,7 @@ impl<
                             duplicated_input.id = duplicate_id;
                             duplicated_input
                         });
-                        if let Some(output_id) = other.connections.get(*input_id) {
+                        if let Some(output_id) = other.connections.get_parent(*input_id) {
                             // Maintain a list of connections to duplicate
                             if let Some(connected_inputs) = old_connections.get_mut(output_id) {
                                 connected_inputs.insert(*input_id);
@@ -122,7 +122,7 @@ impl<
             }
             let (_node, disconnections) = new_graph.remove_node(node_id);
             for (input_id, _output_id) in disconnections.iter() {
-                new_graph.remove_connection(*input_id);
+                new_graph.connections.remove(*input_id);
             }
         }
 
@@ -158,7 +158,7 @@ impl<
                             duplicated_input.id = duplicate_id;
                             duplicated_input
                         });
-                        if let Some(output_id) = self.connections.get(*input_id) {
+                        if let Some(output_id) = self.connections.get_parent(*input_id) {
                             // Maintain a list of connections to duplicate
                             if let Some(connected_inputs) = old_connections.get_mut(output_id) {
                                 connected_inputs.insert(*input_id);
@@ -234,14 +234,14 @@ impl<
         let node = self[param].node;
         self[node].inputs.retain(|(_, id)| *id != param);
         self.inputs.remove(param);
-        self.connections.retain(|i, _| i != param);
+        self.connections.retain_parents(|i, _| *i != param);
     }
 
     pub fn remove_output_param(&mut self, param: OutputId) {
         let node = self[param].node;
         self[node].outputs.retain(|(_, id)| *id != param);
         self.outputs.remove(param);
-        self.connections.retain(|_, o| *o != param);
+        self.connections.retain_parents(|_, o| *o != param);
     }
 
     pub fn add_output_param(&mut self, node_id: NodeId, name: String, typ: DataType) -> OutputId {
@@ -262,9 +262,9 @@ impl<
     pub fn remove_node(&mut self, node_id: NodeId) -> (Node<NodeData>, Vec<(InputId, OutputId)>) {
         let mut disconnect_events = vec![];
 
-        self.connections.retain(|i, o| {
-            if self.outputs[*o].node == node_id || self.inputs[i].node == node_id {
-                disconnect_events.push((i, *o));
+        self.connections.retain_parents(|i, o| {
+            if self.outputs[*o].node == node_id || self.inputs[*i].node == node_id {
+                disconnect_events.push((*i, *o));
                 false
             } else {
                 true
@@ -284,24 +284,29 @@ impl<
         (removed_node, disconnect_events)
     }
 
-    pub fn remove_connection(&mut self, input_id: InputId) -> Option<OutputId> {
-        self.connections.remove(input_id)
-    }
-
     pub fn iter_nodes(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.nodes.iter().map(|(id, _)| id)
     }
 
-    pub fn add_connection(&mut self, output: OutputId, input: InputId) {
-        self.connections.insert(input, output);
-    }
+    pub fn child_outputs(&self, node_id: NodeId) -> Vec<OutputId> {
+        let mut child_nodes: Vec<NodeId> = vec![node_id];
+        let mut output_ids: Vec<OutputId> = vec![];
 
-    pub fn iter_connections(&self) -> impl Iterator<Item = (InputId, OutputId)> + '_ {
-        self.connections.iter().map(|(o, i)| (o, *i))
+        while let Some(child_node) = child_nodes.pop() {
+            output_ids.extend(self[child_node].output_ids().map(|output_id| {
+                if let Some(input_id) = self.connections.get_child(output_id) {
+                    child_nodes.push(self.inputs[*input_id].node);
+                }
+
+                output_id
+            }));
+        }
+
+        output_ids
     }
 
     pub fn connection(&self, input: InputId) -> Option<OutputId> {
-        self.connections.get(input).copied()
+        self.connections.get_parent(input).copied()
     }
 
     pub fn any_param_type(&self, param: AnyParameterId) -> Result<&DataType, EguiGraphError> {

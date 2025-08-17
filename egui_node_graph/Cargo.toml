@@ -17,6 +17,6 @@ persistence = ["serde", "slotmap/serde", "smallvec/serde", "egui/persistence"]
 [dependencies]
 egui = { version = "0.32" }
 slotmap = { version = "1.0" }
-smallvec = { version = "1.14" }
+smallvec = { version = "1.15" }
 serde = { version = "1", optional = true, features = ["derive"] }
 thiserror = "2.0"

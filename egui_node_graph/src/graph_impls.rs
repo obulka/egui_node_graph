@@ -57,7 +57,7 @@ impl<
                             duplicated_input.id = duplicate_id;
                             duplicated_input
                         });
-                        if let Some(output_id) = other.connections.get_parent(*input_id) {
+                        if let Some(output_id) = other.connections.parent(*input_id) {
                             // Maintain a list of connections to duplicate
                             if let Some(connected_inputs) = old_connections.get_mut(output_id) {
                                 connected_inputs.insert(*input_id);
@@ -122,7 +122,7 @@ impl<
             }
             let (_node, disconnections) = new_graph.remove_node(node_id);
             for (input_id, _output_id) in disconnections.iter() {
-                new_graph.connections.remove(*input_id);
+                new_graph.connections.remove_input(*input_id);
             }
         }
 
@@ -158,7 +158,7 @@ impl<
                             duplicated_input.id = duplicate_id;
                             duplicated_input
                         });
-                        if let Some(output_id) = self.connections.get_parent(*input_id) {
+                        if let Some(output_id) = self.connections.parent(*input_id) {
                             // Maintain a list of connections to duplicate
                             if let Some(connected_inputs) = old_connections.get_mut(output_id) {
                                 connected_inputs.insert(*input_id);
@@ -234,14 +234,14 @@ impl<
         let node = self[param].node;
         self[node].inputs.retain(|(_, id)| *id != param);
         self.inputs.remove(param);
-        self.connections.retain_parents(|i, _| *i != param);
+        self.connections.remove_input(param);
     }
 
     pub fn remove_output_param(&mut self, param: OutputId) {
         let node = self[param].node;
         self[node].outputs.retain(|(_, id)| *id != param);
         self.outputs.remove(param);
-        self.connections.retain_parents(|_, o| *o != param);
+        self.connections.remove_output(param);
     }
 
     pub fn add_output_param(&mut self, node_id: NodeId, name: String, typ: DataType) -> OutputId {
@@ -262,14 +262,15 @@ impl<
     pub fn remove_node(&mut self, node_id: NodeId) -> (Node<NodeData>, Vec<(InputId, OutputId)>) {
         let mut disconnect_events = vec![];
 
-        self.connections.retain_parents(|i, o| {
-            if self.outputs[*o].node == node_id || self.inputs[*i].node == node_id {
-                disconnect_events.push((*i, *o));
-                false
-            } else {
-                true
-            }
-        });
+        disconnect_events.extend(
+            self.connections
+                .disconnect_inputs(self[node_id].input_ids().collect()),
+        );
+
+        disconnect_events.extend(
+            self.connections
+                .disconnect_outputs(self[node_id].output_ids().collect()),
+        );
 
         // NOTE: Collect is needed because we can't borrow the input ids while
         // we remove them inside the loop.
@@ -294,8 +295,9 @@ impl<
 
         while let Some(child_node) = child_nodes.pop() {
             output_ids.extend(self[child_node].output_ids().map(|output_id| {
-                if let Some(input_id) = self.connections.get_child(output_id) {
-                    child_nodes.push(self.inputs[*input_id].node);
+                if let Some(input_ids) = self.connections.children(output_id) {
+                    child_nodes
+                        .extend(input_ids.iter().map(|input_id| self.inputs[*input_id].node));
                 }
 
                 output_id
@@ -306,7 +308,7 @@ impl<
     }
 
     pub fn connection(&self, input: InputId) -> Option<OutputId> {
-        self.connections.get_parent(input).copied()
+        self.connections.parent(input).copied()
     }
 
     pub fn any_param_type(&self, param: AnyParameterId) -> Result<&DataType, EguiGraphError> {

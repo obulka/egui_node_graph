@@ -548,7 +548,7 @@ where
                 }
                 NodeResponse::DisconnectEvent { input, output } => {
                     let other_node = self.graph.get_output(*output).node;
-                    self.graph.connections.remove(*input);
+                    self.graph.connections.remove_input(*input);
                     self.connection_in_progress =
                         Some((other_node, AnyParameterId::Output(*output)));
                 }
